@@ -36,7 +36,7 @@ reg - table of registers in this operand (any bit size)
 mul - multiplier used in SIB byte
 rel8/rel16/rel32 - the relative offset used in this operand --- call sub_011C0D20 (...rel32 would be 011C0D20)
 imm8/imm16/imm32 - the offset value used in this operand --- mov eax,[ebx+0120CDD0]
-disp8/disp16/disp32 - the  constant value used in this operand --- mov eax,DEADBEEF
+disp8/disp16/disp32 - the constant value used in this operand --- mov eax,DEADBEEF
 
 
 
