@@ -1,7 +1,6 @@
 #pragma warning(disable:4996)
 #include <Windows.h>
 #include "eyestep.h"
-#include <map>
 
 #define SIB_NOT_FIRST 255
 
@@ -485,17 +484,23 @@ namespace EyeStep
 						at += sizeof(uint32_t);
 					};
 
-					// 'auto' makes the most sense here
 					auto get_sib = [&get_imm8, &get_imm32, &p, &at, &c](uint8_t imm)
 					{
-						// get the SIB byte based on the operand's MOD byte
-						// http://www.c-jump.com/CIS77/CPU/x86/X77_0100_sib_byte_layout.htm
+						// get the SIB byte based on the operand's MOD byte.
+						// See http://www.c-jump.com/CIS77/CPU/x86/X77_0100_sib_byte_layout.htm
+						// See https://www.cs.uaf.edu/2002/fall/cs301/Encoding%20instructions.htm
+						// 
+						// To-do: Label the values that make up scale, index, and byte
+						// I didn't label too much here so it is pretty indecent atm...
+						// 
+
 						uint8_t sib_byte = *++at; // notice we skip to the next byte for this
 						uint8_t r1 = (sib_byte % 64) / 8;
 						uint8_t r2 = (sib_byte % 64) % 8;
 
 						if ((sib_byte + 32) / 32 % 2 == 0 && sib_byte % 32 < 8)
 						{
+							// 
 							strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
 						} else 
 						{
@@ -505,14 +510,16 @@ namespace EyeStep
 							} else 
 							{
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
-								strcat(p.data, "+");
+								strcat(p.data, "+"); // + SIB Base
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r1)]);
 							}
 
+							// SIB Scale
 							if (sib_byte / 64)
 							{
+								p.operands[c].mul = multipliers[sib_byte / 64];
 								char s_multiplier[4];
-								sprintf(s_multiplier, "%i", multipliers[sib_byte / 64]);
+								sprintf(s_multiplier, "%i", p.operands[c].mul);
 								strcat(p.data, "*");
 								strcat(p.data, s_multiplier);
 							}
