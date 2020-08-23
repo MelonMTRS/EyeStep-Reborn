@@ -1,13 +1,13 @@
 # EyeStep-Reborn
-Full and compact intel x86 disassembler + assembler
+Completely full and compact intel x86 disassembler
 
 
 # About
-This is completely original, and table-based from the resources provided at:
+This is original and table-based from the resources provided at:
 http://ref.x86asm.net/coder32.html
 
 I ask that you give credit in some way for using this in your projects,
-but that credit can be as simple as leaving my comments in this code :p
+and at least leave my comments in the code
 
 
 # Usage
