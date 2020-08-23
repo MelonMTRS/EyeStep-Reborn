@@ -36,15 +36,33 @@ For destination you would use operands[1].
 
 The operand class contains the following:
 
-opmode - this is the mode, or, type of operand. There are many of these. DOCS COMING SOON
+opmode - this is the mode, or, type of operand. There are many of these. SEE BELOW***
 reg - table of registers in this operand (any bit size)
 mul - multiplier used in SIB byte
-rel8/rel16/rel32 - the relative offset used in this operand --- call sub_011C0D20 (...rel32 would be 011C0D20)
-imm8/imm16/imm32 - the offset value used in this operand --- mov eax,[ebx+0120CDD0]
-disp8/disp16/disp32 - the constant value used in this operand --- mov eax,DEADBEEF
+rel8/rel16/rel32 - the relative offset used in this operand --- Example: call 011C0D20 (...rel32 would be 011C0D20)
+imm8/imm16/imm32 - the offset value used in this operand --- Example: mov eax,[ebx+0120CDD0]
+disp8/disp16/disp32 - the constant value used in this operand --- Example: mov eax,DEADBEEF
 
 
+*** some examples of opmodes are:
 
+mov eax,[ebx+04] \/\/\/
+operands[0].opmode = r16_32/r32 // this is what will be expected as the first operand's opmode
+operands[1].opmode = r_m16_32/r_m32 // second operand's opcode
 
+mov [ebx+04],eax \/\/\/
+operands[0].opmode = r_m16_32/r_m32
+operands[1].opmode = r16_32/r32
+
+call 0110CBF0 \/\/\/
+operands[0].opmode = rel32
+
+mov eax,10000000 \/\/\/
+operands[0].opmode = imm32 // (but disp32 gets set)
+operands[0].disp32 = 10000000 // constant value
+
+mov eax,[10000000] \/\/\/
+operands[0].opmode = imm32
+operands[0].imm32 = 10000000
 
 
