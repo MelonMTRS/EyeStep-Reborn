@@ -180,13 +180,14 @@ namespace EyeStep
 			disp32 = 0;
 			mul = 0;
 			opmode = 0;
+			flags = 0;
 		}
 
 		~operand()
 		{
 		}
 
-
+		DWORD flags;
 		uint8_t opmode;
 		std::vector<uint8_t> reg;
 		uint8_t mul; // single multiplier
