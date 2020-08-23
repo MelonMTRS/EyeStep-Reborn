@@ -39,6 +39,23 @@
 #define OP_SEG_FS				0x64
 #define OP_SEG_GS				0x65
 
+
+// low-grade filters(or flags) for instructions
+
+#define OP_NONE					0x00000000 // undefined or blank opcode
+#define OP_SINGLE				0x00000001 // single operand in opcode (only Source)
+#define OP_SRC_DEST				0x00000002 // two operands in opcode (Typical) (Source and Destination)
+#define OP_EXTENDED				0x00000004 // more than two operands in the opcode
+#define OP_R8					0x00000010 // this operand has an 8-bit register
+#define OP_R16					0x00000020 // this operand has a 16-bit register
+#define OP_R32					0x00000040 // this operand has a 32-bit register
+#define OP_IMM8					0x00000080 // this operand has an 8-bit offset
+#define OP_IMM16				0x00000100 // this operand has a 16-bit offset
+#define OP_IMM32				0x00000200 // this operand has a 32-bit offset
+#define OP_DISP8				0x00000400 // this operand has an 8-bit constant value
+#define OP_DISP16				0x00000800 // this operand has a 16-bit constant value
+#define OP_DISP32				0x00001000 // this operand has a 32-bit constant value
+
 namespace EyeStep
 {
 	// See http://ref.x86asm.net/coder32.html documentation
@@ -152,11 +169,23 @@ namespace EyeStep
 	{
 		operand()
 		{
+			rel8 = 0;
+			rel16 = 0;
+			rel32 = 0;
+			imm8 = 0;
+			imm16 = 0;
+			imm32 = 0;
+			disp8 = 0;
+			disp16 = 0;
+			disp32 = 0;
+			mul = 0;
+			opmode = 0;
 		}
 
 		~operand()
 		{
 		}
+
 
 		uint8_t opmode;
 		std::vector<uint8_t> reg;
@@ -174,7 +203,7 @@ namespace EyeStep
 			uint16_t rel16;
 			uint32_t rel32;
 		};
-		
+
 		union
 		{
 			uint8_t imm8;
@@ -206,26 +235,35 @@ namespace EyeStep
 			data[0] = '\0';
 			info = OP_INFO();
 
-			address = NULL;
-			pre_flags = NULL;
-			len = NULL;
+			// allocate open spaces
+			operands = std::vector<operand>(4);
+
+			for (int i = 0; i < 4; i++)
+			{
+				// allocate blank spaces for registers
+				operands[i].reg = std::vector<uint8_t>(4);
+			}
+
+			address = 0;
+			pre_flags = 0;
+			len = 0;
 		}
 
-		~inst() 
+		~inst()
 		{
 			operands.clear();
 		}
 
-		operand source() 
-		{ 
+		operand source()
+		{
 			if (operands.size() <= 0) return operand();
 			return operands[0];
 		}
 
-		operand destination() 
-		{ 
+		operand destination()
+		{
 			if (operands.size() <= 1) return operand();
-			return operands[1]; 
+			return operands[1];
 		}
 	};
 
