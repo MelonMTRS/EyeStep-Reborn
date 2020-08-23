@@ -48,6 +48,7 @@ namespace EyeStep
 	{
 		AL,
 		AH,
+		AX,
 		EAX,
 		ECX,
 		EDX,
@@ -57,7 +58,7 @@ namespace EyeStep
 		CX,
 		DX,
 		Sreg,
-		Ptr16_32,
+		ptr16_32,
 		Flags,
 		EFlags,
 		ES,
@@ -66,18 +67,20 @@ namespace EyeStep
 		SS,
 		FS,
 		GS,
+		one,
 		r8,
 		r16,
 		r16_32,
 		r32,
+		r64,
 		r_m8,
 		r_m16,
 		r_m16_32,
-		r_m16_M32,
+		r_m16_m32,
 		r_m32,
 		moffs8,
 		moffs16_32,
-		m16_32_AND_16_32,
+		m16_32_and_16_32,
 		m,
 		m8,
 		m14_28,
@@ -111,10 +114,12 @@ namespace EyeStep
 		xmm_m128,
 		STi,
 		ST1,
+		ST2,
 		ST,
 		LDTR,
 		GDTR,
 		IDTR,
+		PMC,
 		TR,
 		XCR,
 		MSR,
@@ -188,6 +193,7 @@ namespace EyeStep
 	struct inst
 	{
 		char data[256];
+		OP_INFO info;
 
 		uint8_t bytes[MAX_INSTR_READBITS / 8];
 		size_t len;
@@ -198,7 +204,7 @@ namespace EyeStep
 		inst()
 		{
 			data[0] = '\0';
-			strcpy(data, "");
+			info = OP_INFO();
 
 			address = NULL;
 			pre_flags = NULL;
@@ -230,7 +236,7 @@ namespace EyeStep
 	extern std::vector<EyeStep::inst> ReadInstructions(uintptr_t address, int count);
 	extern std::vector<EyeStep::inst> ReadInstructionRange(uintptr_t address_from, uintptr_t address_to);
 
-	extern uint8_t to_byte(std::string);
+	extern uint8_t to_byte(std::string, int offset = 0);
 	extern std::string to_str(uint8_t);
 }
 
