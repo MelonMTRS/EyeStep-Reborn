@@ -147,12 +147,12 @@ uint32_t getm40(uint8_t byte)
 
 uint32_t finalreg(uint8_t byte)
 {
-	return byte % 64 % 8;
+	return (byte % 64) % 8;
 }
 
 uint32_t longreg(uint8_t byte)
 {
-	return byte % 64 / 8;
+	return (byte % 64) / 8;
 }
 
 namespace EyeStep
@@ -1223,13 +1223,13 @@ namespace EyeStep
 							if (n >= 0 && n < 8)
 							{
 								// for every +8 it switches to a different opcode out of 8
-								opcode_match = (*(at + 1) % 64 / 8) == n;
+								opcode_match = longreg(*(at + 1)) == n;
 							}
 							else {
 								// for every +8 it switches to a different opcode out of 8
 								// IF the mode is 3 / the byte is >= 0xC0
 								n -= 8;
-								opcode_match = ((*(at + 1) % 64 / 8) == n && *(at + 1) >= 0xC0);
+								opcode_match = longreg(*(at + 1)) == n && *(at + 1) >= 0xC0;
 							}
 							break;
 						}
@@ -1364,8 +1364,8 @@ namespace EyeStep
 						// 
 
 						uint8_t sib_byte = *++at; // notice we skip to the next byte for this
-						uint8_t r1 = (sib_byte % 64) / 8;
-						uint8_t r2 = (sib_byte % 64) % 8;
+						uint8_t r1 = longreg(sib_byte);
+						uint8_t r2 = finalreg(sib_byte);
 
 						if ((sib_byte + 32) / 32 % 2 == 0 && sib_byte % 32 < 8)
 						{
@@ -1459,12 +1459,12 @@ namespace EyeStep
 					// grab the basic register initially
 					if (prev == MOD_NOT_FIRST)
 					{
-						r = (*at % 64) / 8;
+						r = longreg(*at);
 					}
 
 					if (reg_from_opcode_byte)
 					{
-						r = (*(at - 1) % 64) % 8;
+						r = finalreg(*(at - 1));
 					}
 
 					switch (p.operands[c].opmode)
@@ -1567,7 +1567,7 @@ namespace EyeStep
 								prev = r;
 							}
 
-							r = (*at % 64) % 8;
+							r = finalreg(*at);
 
 							switch (*at / 64) // determine mode from `MOD` byte
 							{
