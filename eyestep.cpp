@@ -4,8 +4,6 @@
 
 #define MOD_NOT_FIRST 255
 
-// this could be cleaner
-// maybe
 namespace mnemonics
 {
 	const char* r8_names[] = 
