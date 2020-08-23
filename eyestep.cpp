@@ -1373,7 +1373,8 @@ namespace EyeStep
 							strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
 						} else 
 						{
-							if (r2 == 5 && *(at - 1) < 64) // we need to check the previous byte in this circumstance
+							// we need to check the previous byte in this circumstance
+							if (r2 == 5 && *(at - 1) < 64)
 							{
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r1)]);
 							} else 
