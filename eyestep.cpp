@@ -1714,8 +1714,6 @@ namespace EyeStep
 			p.len = 1;
 			strcpy(p.data, "???");
 		}
-		
-		printf("Instruction length: %i\t  %s\n", p.len, p.data);
 
 		return p;
 	}
