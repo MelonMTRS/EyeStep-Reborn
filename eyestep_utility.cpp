@@ -735,5 +735,21 @@ namespace EyeStep
 
 			return aob;
 		}
+
+		// converts a result to an AOB string
+		// for example 0x110CBED0 --> "D0 BE 0C 11"
+		std::string ptrstring(uint32_t ptr)
+		{
+			std::string aob = "";
+
+			uint8_t* bytes = reinterpret_cast<uint8_t*>(ptr);
+
+			aob += to_str(bytes[3]) + " ";
+			aob += to_str(bytes[2]) + " ";
+			aob += to_str(bytes[1]) + " ";
+			aob += to_str(bytes[0]);
+
+			return aob;
+		}
 	}
 }
