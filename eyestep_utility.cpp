@@ -764,6 +764,7 @@ namespace EyeStep
 			}
 			else {
 				throw std::exception("No results found for string");
+				return scan_results();
 			}
 		}
 
