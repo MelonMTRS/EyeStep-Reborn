@@ -1,5 +1,7 @@
 #pragma warning(disable:4996)
 #include <Windows.h>
+#include <Psapi.h>
+#include <TlHelp32.h>
 #include "eyestep.h"
 
 #define MOD_NOT_FIRST 255
@@ -157,6 +159,10 @@ uint32_t longreg(uint8_t byte)
 
 namespace EyeStep
 {
+	HMODULE base_module = nullptr;
+	size_t base_module_size = NULL;
+	bool external_mode = false;
+
 	// This has been optimized so that the
 	// prefix, two-mode byte, and opcode byte 
 	// are all packed into the same string
@@ -1083,7 +1089,7 @@ namespace EyeStep
 		{ "FF+m6", "push", { r_m16_32 },				"Push Word, Doubleword or Quadword Onto the Stack" },
 	};
 
-	void* procHandle = nullptr;
+	void* current_proc = nullptr;
 
 	uint8_t to_byte(std::string str, int offset)
 	{
@@ -1118,9 +1124,107 @@ namespace EyeStep
 		return "";
 	}
 
-	void open(HANDLE handle)
+	// Directly sets the current process handle
+	// and base module for operating either externally 
+	// or from a DLL
+	// 
+	void open(HANDLE handle, HMODULE _module)
 	{
-		procHandle = handle;
+		external_mode = false;
+		current_proc = handle;
+
+		// DLL-mode? we're reading from the current process
+		// so let's just grab the base module and the base
+		// module's size (needed for certain operations)
+		if (handle == GetCurrentProcess())
+		{
+			base_module = reinterpret_cast<HMODULE>(__readfsdword(0x30) + 8);
+
+			MEMORY_BASIC_INFORMATION mbi = { 0 };
+			VirtualQuery(reinterpret_cast<void*>(base_module + 4096), &mbi, sizeof(mbi));
+
+			base_module_size = reinterpret_cast<size_t>(base_module) + mbi.RegionSize;
+		}
+		else
+		{
+			external_mode = true;
+
+			// non-DLL mode / opening a different process...
+			// if you use this overload of the open()
+			// function to perform operations in a separate program,
+			// I assume you have the HANDLE and the 
+			// BASE module of that other process
+			if (_module)
+			{
+				// This will simply grab the base module's size 
+				// to make sure it's set
+				MEMORY_BASIC_INFORMATION mbi = { 0 };
+				VirtualQueryEx(handle, reinterpret_cast<void*>(_module + 4096), &mbi, sizeof(mbi));
+
+				// Update the REQUIRED values
+				base_module = _module;
+				base_module_size = reinterpret_cast<size_t>(base_module) + mbi.RegionSize;
+			}
+		}
+	}
+
+	HMODULE get_base_module(HANDLE pHandle, std::wstring processName)
+	{
+		HMODULE hMods[1024];
+		DWORD cbNeeded;
+		unsigned int i;
+
+		if (EnumProcessModules(pHandle, hMods, sizeof(hMods), &cbNeeded))
+		{
+			for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
+			{
+				wchar_t szModName[MAX_PATH];
+				if (GetModuleFileNameExW(pHandle, hMods[i], szModName, sizeof(szModName) / sizeof(char)))
+				{
+					std::wstring strModName = szModName;
+					if (strModName.find(processName) != std::string::npos)
+					{
+						return hMods[i];
+					}
+				}
+			}
+		}
+
+		return NULL;
+	}
+
+	// Opens a separate process via the 
+	// processes title (External)
+	void open(std::wstring process_name)
+	{
+		external_mode = true;
+
+		// Open the process by its title using the 
+		// textbook standard - stackoverflow edition
+		PROCESSENTRY32W entry;
+		entry.dwSize = sizeof(PROCESSENTRY32W);
+
+		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
+
+		if (Process32FirstW(snapshot, &entry) == TRUE)
+		{
+			while (Process32NextW(snapshot, &entry) == TRUE)
+			{
+				if (lstrcmpW(entry.szExeFile, process_name.c_str()) == 0)
+				{
+					current_proc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, entry.th32ProcessID);
+					break;
+				}
+			}
+		}
+
+		CloseHandle(snapshot);
+
+		if (base_module = get_base_module(current_proc, process_name))
+		{
+			// This will grab the size of the base module
+			open(current_proc, base_module);
+		}
 	}
 
 	inst read(uintptr_t address)
@@ -1128,18 +1232,58 @@ namespace EyeStep
 		auto p = inst();
 		p.address = address;
 
-		// make 1 function call either way
-		if (procHandle == nullptr)
+		if (!external_mode)
 		{
 			memcpy(&p.bytes, reinterpret_cast<void*>(address), sizeof(p.bytes) / sizeof(uint8_t));
 		}
 		else 
 		{
 			DWORD nothing;
-			ReadProcessMemory(procHandle, reinterpret_cast<void*>(address), &p.bytes, sizeof(p.bytes) / sizeof(uint8_t), &nothing);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &p.bytes, sizeof(p.bytes) / sizeof(uint8_t), &nothing);
 		}
 
 		uint8_t* at = p.bytes;
+
+		// identify the instruction prefixes
+		switch (*at)
+		{
+		case OP_SEG_CS:
+			at++, p.flags |= PRE_SEG_CS;
+			break;
+		case OP_SEG_SS:
+			at++, p.flags |= PRE_SEG_SS;
+			break;
+		case OP_SEG_DS:
+			at++, p.flags |= PRE_SEG_DS;
+			break;
+		case OP_SEG_ES:
+			at++, p.flags |= PRE_SEG_ES;
+			break;
+		case OP_SEG_FS:
+			at++, p.flags |= PRE_SEG_FS;
+			break;
+		case OP_SEG_GS:
+			at++, p.flags |= PRE_SEG_GS;
+			break;
+		case OP_66:
+			at++, p.flags |= PRE_66;
+			break;
+		case OP_67:
+			at++, p.flags |= PRE_67;
+			break;
+		case OP_LOCK:
+			at++, p.flags |= PRE_LOCK;
+			strcat(p.data, "lock ");
+			break;
+		case OP_REPNE:
+			at++, p.flags |= PRE_REPNE;
+			strcat(p.data, "repne ");
+			break;
+		case OP_REPE:
+			at++, p.flags |= PRE_REPE;
+			strcat(p.data, "repe ");
+			break;
+		}
 
 		// store the original
 		uint8_t* prev_at = at;
@@ -1210,48 +1354,6 @@ namespace EyeStep
 			// this byte matches the opcode byte
 			if (opcode_match)
 			{
-				// Identify the instruction's prefix
-				switch (*at)
-				{
-				case OP_SEG_CS:
-					at++, p.flags |= PRE_SEG_CS;
-					break;
-				case OP_SEG_SS:
-					at++, p.flags |= PRE_SEG_SS;
-					break;
-				case OP_SEG_DS:
-					at++, p.flags |= PRE_SEG_DS;
-					break;
-				case OP_SEG_ES:
-					at++, p.flags |= PRE_SEG_ES;
-					break;
-				case OP_SEG_FS:
-					at++, p.flags |= PRE_SEG_FS;
-					break;
-				case OP_SEG_GS:
-					at++, p.flags |= PRE_SEG_GS;
-					break;
-				case OP_66:
-					at++, p.flags |= PRE_66;
-					break;
-				case OP_67:
-					at++, p.flags |= PRE_67;
-					break;
-				case OP_LOCK:
-					at++, p.flags |= PRE_LOCK;
-					strcat(p.data, "lock ");
-					break;
-				case OP_REPNE:
-					at++, p.flags |= PRE_REPNE;
-					strcat(p.data, "repne ");
-					break;
-				case OP_REPE:
-					at++, p.flags |= PRE_REPE;
-					strcat(p.data, "repe ");
-					break;
-				default: break;
-				}
-
 				// move onto the next byte
 				at++;
 
@@ -1497,7 +1599,7 @@ namespace EyeStep
 					switch (p.operands[c].opmode)
 					{
 						case OP_TYPES::one:
-							p.operands[c].disp8 = p.operands[c].disp16 = p.operands[c].disp32 = 1;
+							p.operands[c].disp32 = p.operands[c].disp16 = p.operands[c].disp8 = 1;
 							strcat(p.data, "1");
 							break;
 						case OP_TYPES::xmm0:
