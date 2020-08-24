@@ -5,6 +5,8 @@ namespace EyeStep
 {
 	namespace util
 	{
+		extern DWORD setMemoryPage(uint32_t address, DWORD protect, size_t size = 0x3FF);
+
 		extern void writeByte(uint32_t address, uint8_t value);
 		extern void writeBytes(uint32_t address, uint8_t* value, size_t count);
 		extern void writeShort(uint32_t address, uint16_t value);
@@ -26,10 +28,12 @@ namespace EyeStep
 		extern uint32_t rebase(uint32_t address);
 		extern uint32_t aslr(uint32_t address);
 		extern uint32_t unaslr(uint32_t address);
+		extern bool isRel(uint32_t address);
+		extern bool isCall(uint32_t address);
+		extern bool isPrologue(uint32_t address);
+		extern bool isEpilogue(uint32_t address);
+		extern bool isValidCode(uint32_t address);
 		extern uint32_t getRel(uint32_t address);
-		extern uint32_t isCall(uint32_t address);
-		extern uint32_t isPrologue(uint32_t address);
-		extern uint32_t isValidCode(uint32_t address);
 		extern uint32_t getPrologue(uint32_t address);
 		extern uint32_t nextPrologue(uint32_t address);
 		extern uint32_t nextCall(uint32_t address, bool location = false, bool prologue = false);
@@ -66,5 +70,6 @@ namespace EyeStep
 
 		extern bool compare_bytes(const uint8_t* location, const uint8_t* aob, const char* mask);
 		extern scan_results scan(const char* aob, bool code = true, int align = 1, int endresult = 0, std::vector<scan_check>checks = std::vector<scan_check>());
+		extern std::string aobstring(std::string str); // converts a string to a scan-able AOB
 	}
 }
