@@ -259,11 +259,11 @@ namespace EyeStep
 
 	extern void* procHandle;
 
-	extern void Open(void* procHandle);
-	extern inst ReadInstruction(uintptr_t address);
+	extern void open(void* procHandle);
+	extern inst read(uintptr_t address);
 
-	extern std::vector<EyeStep::inst> ReadInstructions(uintptr_t address, int count);
-	extern std::vector<EyeStep::inst> ReadInstructionRange(uintptr_t address_from, uintptr_t address_to);
+	extern std::vector<EyeStep::inst> read(uintptr_t address, int count);
+	extern std::vector<EyeStep::inst> read_range(uintptr_t address_from, uintptr_t address_to);
 
 	extern uint8_t to_byte(std::string, int offset = 0);
 	extern std::string to_str(uint8_t);
