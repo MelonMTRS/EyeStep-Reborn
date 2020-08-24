@@ -1,4 +1,3 @@
-#include <Windows.h>
 #include "eyestep_utility.h"
 
 namespace EyeStep
