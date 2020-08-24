@@ -542,7 +542,10 @@ namespace EyeStep
 
             MEMORY_BASIC_INFORMATION mbi = { 0 };
 
+			size_t scan_size = 0;
             DWORD bytes_read;
+			uint8_t* bytes = nullptr;
+			uint32_t region_base = 0;
             uint32_t protection = 0;
             uint32_t start = 0;
             uint32_t end = 0;
@@ -604,65 +607,47 @@ namespace EyeStep
             else
             {
                 start = reinterpret_cast<uint32_t>(base_module);
-                end = start;
-
-                if (external_mode)
-                {
-                    uint8_t bytes[1024];
-                    ReadProcessMemory(current_proc, base_module, &bytes, 1024, &bytes_read);
-
-                    end = reinterpret_cast<uint32_t>(bytes);
-                }
-
-                // look for first `.rdata` marker
-                while (*reinterpret_cast<uint32_t*>(end) != 0x6164722E) // ".rda"
-                {
-                    end++;
-                }
-                // jump to it
-                end = (start + *reinterpret_cast<uint32_t*>(end + 12)) - 0x4000; 
+				end = reinterpret_cast<uint32_t>(base_module) + base_module_size;
             }
 
             while (start < end)
             {
                 if (!external_mode)
                 {
-                    VirtualQuery(reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
+                    VirtualQuery(reinterpret_cast<void*>(start), &mbi, sizeof(mbi)); 
                 }
                 else {
                     VirtualQueryEx(current_proc, reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
                 }
 
                 // Make sure the memory is committed, matches our protection, and isn't PAGE_GUARD.
-                if ((mbi.State & MEM_COMMIT) && !(mbi.Protect == PAGE_NOACCESS || mbi.Protect == PAGE_NOCACHE || mbi.Protect & PAGE_GUARD))
+                if ((mbi.State & MEM_COMMIT) && mbi.Protect != PAGE_NOACCESS && mbi.Protect != PAGE_NOCACHE && !(mbi.Protect & PAGE_GUARD))
                 {
-                    uint32_t region_base = reinterpret_cast<uint32_t>(mbi.BaseAddress);
-					uint32_t i = region_base - (region_base % 16);
+					bool read_memory = true;
+
+					bytes = new uint8_t[mbi.RegionSize];
+
+					if (!external_mode)
+					{
+						memcpy(bytes, reinterpret_cast<void*>(start), mbi.RegionSize);
+					}
+					else {
+						if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(start), bytes, mbi.RegionSize, &bytes_read) == 0)
+						{
+							start += mbi.RegionSize;
+							continue;
+						}
+					}
 
                     // Scan all the memory in the region.
-                    while (i < region_base + mbi.RegionSize)
+                    for (size_t i = 0; i < mbi.RegionSize; i += align)
                     {
-                        bool bytes_match = false;
-
-                        if (!external_mode)
+                        if (compare_bytes(bytes + i, pattern, mask))
                         {
-                            bytes_match = compare_bytes(reinterpret_cast<uint8_t*>(i), pattern, mask);
-                        }
-                        else {
-                            uint8_t* bytes = new uint8_t[mbi.RegionSize];
+							uint32_t at = start + i;
 
-                            if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(i), bytes, mbi.RegionSize, &bytes_read) == 0)
-                            {
-                                bytes_match = compare_bytes(bytes, pattern, mask);
-                            }
-
-                            delete[] bytes;
-                        }
-
-                        if (bytes_match)
-                        {
                             if (checks.size() == 0)
-                                results.push_back(i);
+                                results.push_back(at);
                             else
                             {
                                 // Go through a series of extra checks,
@@ -674,29 +659,29 @@ namespace EyeStep
                                     switch (check.type)
                                     {
                                     case byte_equal:
-                                        if (*reinterpret_cast<uint8_t*>(i + check.offset) == reinterpret_cast<uint8_t>(check.value)) checks_pass++;
+                                        if (*reinterpret_cast<uint8_t*>(at + check.offset) == reinterpret_cast<uint8_t>(check.value)) checks_pass++;
                                         break;
                                     case word_equal:
-                                        if (*reinterpret_cast<uint16_t*>(i + check.offset) == reinterpret_cast<uint16_t>(check.value)) checks_pass++;
+                                        if (*reinterpret_cast<uint16_t*>(at + check.offset) == reinterpret_cast<uint16_t>(check.value)) checks_pass++;
                                         break;
                                     case int_equal:
-                                        if (*reinterpret_cast<uint32_t*>(i + check.offset) == reinterpret_cast<uint32_t>(check.value)) checks_pass++;
+                                        if (*reinterpret_cast<uint32_t*>(at + check.offset) == reinterpret_cast<uint32_t>(check.value)) checks_pass++;
                                         break;
                                     case byte_notequal:
-                                        if (*reinterpret_cast<uint8_t*>(i + check.offset) != reinterpret_cast<uint8_t>(check.value)) checks_pass++;
+                                        if (*reinterpret_cast<uint8_t*>(at + check.offset) != reinterpret_cast<uint8_t>(check.value)) checks_pass++;
                                         break;
                                     case word_notequal:
-                                        if (*reinterpret_cast<uint16_t*>(i + check.offset) != reinterpret_cast<uint16_t>(check.value)) checks_pass++;
+                                        if (*reinterpret_cast<uint16_t*>(at + check.offset) != reinterpret_cast<uint16_t>(check.value)) checks_pass++;
                                         break;
                                     case int_notequal:
-                                        if (*reinterpret_cast<uint32_t*>(i + check.offset) != reinterpret_cast<uint32_t>(check.value)) checks_pass++;
+                                        if (*reinterpret_cast<uint32_t*>(at + check.offset) != reinterpret_cast<uint32_t>(check.value)) checks_pass++;
                                         break;
                                     }
                                 }
 
                                 if (checks_pass == checks.size())
                                 {
-                                    results.push_back(i);
+                                    results.push_back(at);
                                 }
                             }
                             if (endresult > 0 && results.size() >= endresult)
@@ -704,16 +689,13 @@ namespace EyeStep
                                 break;
                             }
                         }
-
-						i += align;
                     }
-				}
-				else {
-					printf("Skipping region %08X\n", mbi.BaseAddress);
+
+					delete[] bytes;
 				}
 
-                // Move onto the next region of memory.
-                start += mbi.RegionSize;
+				// Move onto the next region of memory.
+				start += mbi.RegionSize;
             }
 
             delete[] mask;
@@ -747,19 +729,20 @@ namespace EyeStep
 		{
 			std::string aob = "";
 
-			uint8_t* bytes = reinterpret_cast<uint8_t*>(ptr);
+			uint8_t bytes[4];
+			memcpy(&bytes, &ptr, 4);
 
-			aob += to_str(bytes[3]) + " ";
-			aob += to_str(bytes[2]) + " ";
-			aob += to_str(bytes[1]) + " ";
 			aob += to_str(bytes[0]);
+			aob += to_str(bytes[1]);
+			aob += to_str(bytes[2]);
+			aob += to_str(bytes[3]);
 
 			return aob;
 		}
 
 		scan_results scan_xrefs(const char* str, int nresult)
 		{
-			scan_results result_list = scan(aobstring(str).c_str(), false, 4, nresult);
+			scan_results result_list = scan(aobstring(str).c_str(), true, 4, nresult);
 			if (result_list.size() > 0)
 			{
 				return scan(ptrstring(result_list.back()).c_str());
