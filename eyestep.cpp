@@ -1774,7 +1774,7 @@ namespace EyeStep
 
 		for (int c = 0; c < count; c++)
 		{
-			auto i = ReadInstruction(at);
+			auto i = read(at);
 			inst_list.push_back(i);
 			at += i.len;
 		}
