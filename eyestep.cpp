@@ -1118,12 +1118,12 @@ namespace EyeStep
 		return "";
 	}
 
-	void Open(HANDLE handle)
+	void open(HANDLE handle)
 	{
 		procHandle = handle;
 	}
 
-	inst ReadInstruction(uintptr_t address)
+	inst read(uintptr_t address)
 	{
 		auto p = inst();
 		p.address = address;
@@ -1767,7 +1767,7 @@ namespace EyeStep
 		return p;
 	}
 
-	std::vector<EyeStep::inst> ReadInstructions(uintptr_t address, int count)
+	std::vector<EyeStep::inst> read(uintptr_t address, int count)
 	{
 		uintptr_t at = address;
 		auto inst_list = std::vector<EyeStep::inst>();
@@ -1782,14 +1782,14 @@ namespace EyeStep
 		return inst_list;
 	}
 
-	std::vector<EyeStep::inst> ReadInstructionRange(uintptr_t from, uintptr_t to)
+	std::vector<EyeStep::inst> read_range(uintptr_t from, uintptr_t to)
 	{
 		uintptr_t at = from;
 		auto inst_list = std::vector<EyeStep::inst>();
 
 		while (at < to)
 		{
-			auto i = ReadInstruction(at);
+			auto i = read(at);
 			inst_list.push_back(i);
 			at += i.len;
 		}
