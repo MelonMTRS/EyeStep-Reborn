@@ -471,9 +471,9 @@ namespace EyeStep
 		{ "66+0F+6B", "packssdw", { xmm, xmm_m128 },	"Pack with Signed Saturation" },
 		{ "66+0F+6C", "punpcklqdq", { xmm, xmm_m128 },	"Unpack Low Data" },
 		{ "66+0F+6D", "punpckhqdq", { xmm, xmm_m128 },	"Unpack High Data" },
-		{ "0F+6E", "movd", { mm, r_m32 },				"Move Doubleword" },
+		{ "0F+6E", "movd", { xmm, r_m32 },				"Move Doubleword" },
 		{ "66+0F+6E", "movd", { xmm, r_m32 },			"Move Doubleword" },
-		{ "0F+6F", "movq", { mm, mm_m64 },				"Move Quadword" },
+		{ "0F+6F", "movq", { xmm, mm_m64 },				"Move Quadword" },
 		{ "66+0F+6F", "movdqa", { xmm, xmm_m128 },		"Move Aligned Double Quadword" },
 		{ "F3+0F+6F", "movdqu", { xmm, xmm_m128 },		"Move Unaligned Double Quadword" },
 		{ "0F+70", "pshufw", { mm_m64, imm8 },			"Shuffle Packed Words" },
@@ -1139,48 +1139,7 @@ namespace EyeStep
 			ReadProcessMemory(procHandle, reinterpret_cast<void*>(address), &p.bytes, sizeof(p.bytes) / sizeof(uint8_t), &nothing);
 		}
 
-		// load prefixes
 		uint8_t* at = p.bytes;
-		switch (*at)
-		{
-		case OP_SEG_CS:
-			at++, p.flags |= PRE_SEG_CS;
-			break;
-		case OP_SEG_SS:
-			at++, p.flags |= PRE_SEG_SS;
-			break;
-		case OP_SEG_DS:
-			at++, p.flags |= PRE_SEG_DS;
-			break;
-		case OP_SEG_ES:
-			at++, p.flags |= PRE_SEG_ES;
-			break;
-		case OP_SEG_FS:
-			at++, p.flags |= PRE_SEG_FS;
-			break;
-		case OP_SEG_GS:
-			at++, p.flags |= PRE_SEG_GS;
-			break;
-		case OP_66:
-			at++, p.flags |= PRE_66;
-			break;
-		case OP_67:
-			at++, p.flags |= PRE_67;
-			break;
-		case OP_LOCK:
-			at++, p.flags |= PRE_LOCK;
-			strcat(p.data, "lock ");
-			break;
-		case OP_REPNE:
-			at++, p.flags |= PRE_REPNE;
-			strcat(p.data, "repne ");
-			break;
-		case OP_REPE:
-			at++, p.flags |= PRE_REPE;
-			strcat(p.data, "repe ");
-			break;
-		default: break;
-		}
 
 		// store the original
 		uint8_t* prev_at = at;
@@ -1251,6 +1210,48 @@ namespace EyeStep
 			// this byte matches the opcode byte
 			if (opcode_match)
 			{
+				// Identify the instruction's prefix
+				switch (*at)
+				{
+				case OP_SEG_CS:
+					at++, p.flags |= PRE_SEG_CS;
+					break;
+				case OP_SEG_SS:
+					at++, p.flags |= PRE_SEG_SS;
+					break;
+				case OP_SEG_DS:
+					at++, p.flags |= PRE_SEG_DS;
+					break;
+				case OP_SEG_ES:
+					at++, p.flags |= PRE_SEG_ES;
+					break;
+				case OP_SEG_FS:
+					at++, p.flags |= PRE_SEG_FS;
+					break;
+				case OP_SEG_GS:
+					at++, p.flags |= PRE_SEG_GS;
+					break;
+				case OP_66:
+					at++, p.flags |= PRE_66;
+					break;
+				case OP_67:
+					at++, p.flags |= PRE_67;
+					break;
+				case OP_LOCK:
+					at++, p.flags |= PRE_LOCK;
+					strcat(p.data, "lock ");
+					break;
+				case OP_REPNE:
+					at++, p.flags |= PRE_REPNE;
+					strcat(p.data, "repne ");
+					break;
+				case OP_REPE:
+					at++, p.flags |= PRE_REPE;
+					strcat(p.data, "repe ");
+					break;
+				default: break;
+				}
+
 				// move onto the next byte
 				at++;
 
