@@ -72,7 +72,7 @@ namespace EyeStep
 		extern scan_results scan(const char* aob, bool code = true, int align = 1, int endresult = 0, std::vector<scan_check>checks = std::vector<scan_check>());
 		extern scan_results scan_xrefs(const char* str, int nresult = 0);
 		extern scan_results scan_xrefs(uint32_t result);
-		extern const char* aobstring(const char* str); // converts a string to a scan-able AOB
-		extern const char* ptrstring(uint32_t ptr); // converts a pointer to a scan-able AOB
+		extern std::string aobstring(const char* str); // converts a string to a scan-able AOB
+		extern std::string ptrstring(uint32_t ptr); // converts a pointer to a scan-able AOB
 	}
 }
