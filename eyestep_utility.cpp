@@ -520,8 +520,12 @@ namespace EyeStep
 		bool compare_bytes(const uint8_t* location, const uint8_t* aob, const char* mask)
 		{
 			for (; *mask; ++aob, ++mask, ++location)
+			{
 				if (*mask == '.' && *location != *aob)
+				{
 					return 0;
+				}
+			}
 			return 1;
 		}
 
@@ -595,9 +599,7 @@ namespace EyeStep
 
                 // Restrict the scan to virtual memory
                 start = reinterpret_cast<uint32_t>(base_module) + base_module_size;
-                end = reinterpret_cast<uint32_t>(siSysInfo.lpMaximumApplicationAddress);
-
-                protection = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READWRITE;
+				end = reinterpret_cast<uint32_t>(siSysInfo.lpMaximumApplicationAddress);
             }
             else
             {
@@ -619,11 +621,7 @@ namespace EyeStep
                 }
                 // jump to it
                 end = (start + *reinterpret_cast<uint32_t*>(end + 12)) - 0x4000; 
-
-                protection = PAGE_EXECUTE_READ;
             }
-
-            printf("%08X to %08X.\n", start, end);
 
             while (start < end)
             {
@@ -636,12 +634,13 @@ namespace EyeStep
                 }
 
                 // Make sure the memory is committed, matches our protection, and isn't PAGE_GUARD.
-                if ((mbi.State & MEM_COMMIT) && (mbi.Protect == protection))
+                if ((mbi.State & MEM_COMMIT) && !(mbi.Protect == PAGE_NOACCESS || mbi.Protect == PAGE_NOCACHE || mbi.Protect & PAGE_GUARD))
                 {
                     uint32_t region_base = reinterpret_cast<uint32_t>(mbi.BaseAddress);
+					uint32_t i = region_base - (region_base % 16);
 
                     // Scan all the memory in the region.
-                    for (uint32_t i = region_base - (region_base % 16); i < region_base + mbi.RegionSize; i += align)
+                    while (i < region_base + mbi.RegionSize)
                     {
                         bool bytes_match = false;
 
@@ -705,11 +704,14 @@ namespace EyeStep
                                 break;
                             }
                         }
+
+						i += align;
                     }
 				}
 				else {
 					printf("Skipping region %08X\n", mbi.BaseAddress);
 				}
+
                 // Move onto the next region of memory.
                 start += mbi.RegionSize;
             }
