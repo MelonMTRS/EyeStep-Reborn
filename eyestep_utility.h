@@ -1,4 +1,5 @@
 #pragma once
+#include <Windows.h>
 #include "eyestep.h"
 
 namespace EyeStep
