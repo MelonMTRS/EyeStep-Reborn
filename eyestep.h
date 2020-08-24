@@ -183,7 +183,7 @@ namespace EyeStep
 		{
 		}
 
-		DWORD flags;
+		uint32_t flags;
 		uint8_t opmode;
 		std::vector<uint8_t> reg;
 		uint8_t mul; // single multiplier
@@ -221,7 +221,7 @@ namespace EyeStep
 		char data[256];
 		OP_INFO info;
 
-		DWORD flags;
+		uint32_t flags;
 		uint8_t bytes[MAX_INSTR_READBITS / 8];
 		size_t len;
 		uintptr_t address;
