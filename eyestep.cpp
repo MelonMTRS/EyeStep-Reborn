@@ -161,7 +161,7 @@ namespace EyeStep
 	// prefix, two-mode byte, and opcode byte 
 	// are all packed into the same string
 	// 
-	const std::vector<OP_INFO> OP_TABLE =
+	const OP_INFO OP_TABLE[] =
 	{
 		{ "00", "add", { r_m8, r8 },					"Add" },
 		{ "01", "add", { r_m16_32, r16_32 },			"Add" },
@@ -745,9 +745,9 @@ namespace EyeStep
 		{ "38", "cmp", { r_m8, r8 },					"Compare Two Operands" },
 		{ "39", "cmp", { r_m16_32, r16_32 },			"Compare Two Operands" },
 		{ "3A", "cmp", { r8, r_m8 },					"Compare Two Operands" },
-		{ "3B", "sbb", { r16_32, r_m16_32 },			"Compare Two Operands" },
-		{ "3C", "sbb", { AL, imm8 },					"Compare Two Operands" },
-		{ "3D", "sbb", { EAX, imm16_32 },				"Compare Two Operands" },
+		{ "3B", "cmp", { r16_32, r_m16_32 },			"Compare Two Operands" },
+		{ "3C", "cmp", { AL, imm8 },					"Compare Two Operands" },
+		{ "3D", "cmp", { EAX, imm16_32 },				"Compare Two Operands" },
 		{ "3F", "aas", { AL, AH },						"ASCII Adjust AL After Subtraction" },
 		{ "40+r", "inc", { r16_32 },					"Increment by 1" },
 		{ "48+r", "dec", { r16_32 },					"Decrement by 1" },
@@ -757,6 +757,7 @@ namespace EyeStep
 		{ "61", "popad", {  },							"Pop All General-Purpose Registers" },
 		{ "62", "bound", { r16_32, m16_32_and_16_32 },	"Check Array Index Against Bounds" },
 		{ "63", "arpl", { r_m16, r16 },					"Adjust RPL Field of Segment Selector" },
+		{ "63", "arpl", { r_m16, r16 },					"Adjust RPL Field of Segment Selector" },
 		{ "68", "push", { imm16_32 },					"Push Word, Doubleword or Quadword Onto the Stack" },
 		{ "69", "imul", { r16_32, r_m16_32, imm16_32 },	"Signed Multiply" },
 		{ "6A", "push", { imm8 },						"Push Word, Doubleword or Quadword Onto the Stack" },
@@ -765,22 +766,22 @@ namespace EyeStep
 		{ "6D", "insd", {  },							"Input from Port to String" },
 		{ "6E", "outsb", {  },							"Output String to Port" },
 		{ "6F", "outsd", {  },							"Output String to Port" },
-		{ "70", "jo", { rel8 },							"Jump short if overflow (OF=1)" },
-		{ "71", "jno", { rel8 },						"Jump short if not overflow (OF=0))" },
-		{ "72", "jb", { rel8 },							"Jump short if below/not above or equal/carry (CF=1)" },
-		{ "73", "jae", { rel8 },						"Jump short if not below/above or equal/not carry (CF=0))" },
-		{ "74", "je", { rel8 },							"Jump short if zero/equal (ZF=1)" },
-		{ "75", "jne", { rel8 },						"Jump short if not zero/not equal (ZF=0)" },
-		{ "76", "jna", { rel8 },						"Jump short if below or equal/not above (CF=1 OR ZF=1)" },
-		{ "77", "ja", { rel8 },							"Jump short if not below or equal/above (CF=0 AND ZF=0)" },
-		{ "78", "js", { rel8 },							"Jump short if sign (SF=1)" },
-		{ "79", "jns", { rel8 },						"Jump short if not sign (SF=0)" },
-		{ "7A", "jp", { rel8 },							"Jump short if parity/parity even (PF=1)" },
-		{ "7B", "jnp", { rel8 },						"Jump short if not parity/parity odd (PF=0)" },
-		{ "7C", "jl", { rel8 },							"Jump short if less/not greater (SF!=OF)" },
-		{ "7D", "jge", { rel8 },						"Jump short if not less/greater or equal (SF=OF)" },
-		{ "7E", "jle", { rel8 },						"Jump short if less or equal/not greater ((ZF=1) OR (SF!=OF))" },
-		{ "7F", "jg", { rel8 },							"Jump short if not less nor equal/greater ((ZF=0) AND (SF=OF))" },
+		{ "70", "jo short", { rel8 },					"Jump short if overflow (OF=1)" },
+		{ "71", "jno short", { rel8 },					"Jump short if not overflow (OF=0))" },
+		{ "72", "jb short", { rel8 },					"Jump short if below/not above or equal/carry (CF=1)" },
+		{ "73", "jae short", { rel8 },					"Jump short if not below/above or equal/not carry (CF=0))" },
+		{ "74", "je short", { rel8 },					"Jump short if zero/equal (ZF=1)" },
+		{ "75", "jne short", { rel8 },					"Jump short if not zero/not equal (ZF=0)" },
+		{ "76", "jna short", { rel8 },					"Jump short if below or equal/not above (CF=1 OR ZF=1)" },
+		{ "77", "ja short", { rel8 },					"Jump short if not below or equal/above (CF=0 AND ZF=0)" },
+		{ "78", "js short", { rel8 },					"Jump short if sign (SF=1)" },
+		{ "79", "jns short", { rel8 },					"Jump short if not sign (SF=0)" },
+		{ "7A", "jp short", { rel8 },					"Jump short if parity/parity even (PF=1)" },
+		{ "7B", "jnp short", { rel8 },					"Jump short if not parity/parity odd (PF=0)" },
+		{ "7C", "jl short", { rel8 },					"Jump short if less/not greater (SF!=OF)" },
+		{ "7D", "jge short", { rel8 },					"Jump short if not less/greater or equal (SF=OF)" },
+		{ "7E", "jle short", { rel8 },					"Jump short if less or equal/not greater ((ZF=1) OR (SF!=OF))" },
+		{ "7F", "jg short", { rel8 },					"Jump short if not less nor equal/greater ((ZF=0) AND (SF=OF))" },
 		{ "80+m0", "add", { r_m8, imm8 },				"Add"},
 		{ "80+m1", "or", { r_m8, imm8 },				"Logical Inclusive OR"},
 		{ "80+m2", "adc", { r_m8, imm8 },				"Add with Carry"},
@@ -1127,7 +1128,6 @@ namespace EyeStep
 		auto p = inst();
 		p.address = address;
 
-
 		// make 1 function call either way
 		if (procHandle == nullptr)
 		{
@@ -1144,39 +1144,39 @@ namespace EyeStep
 		switch (*at)
 		{
 		case OP_SEG_CS:
-			at++, p.pre_flags |= PRE_SEG_CS;
+			at++, p.flags |= PRE_SEG_CS;
 			break;
 		case OP_SEG_SS:
-			at++, p.pre_flags |= PRE_SEG_SS;
+			at++, p.flags |= PRE_SEG_SS;
 			break;
 		case OP_SEG_DS:
-			at++, p.pre_flags |= PRE_SEG_DS;
+			at++, p.flags |= PRE_SEG_DS;
 			break;
 		case OP_SEG_ES:
-			at++, p.pre_flags |= PRE_SEG_ES;
+			at++, p.flags |= PRE_SEG_ES;
 			break;
 		case OP_SEG_FS:
-			at++, p.pre_flags |= PRE_SEG_FS;
+			at++, p.flags |= PRE_SEG_FS;
 			break;
 		case OP_SEG_GS:
-			at++, p.pre_flags |= PRE_SEG_GS;
+			at++, p.flags |= PRE_SEG_GS;
 			break;
 		case OP_66:
-			at++, p.pre_flags |= PRE_66;
+			at++, p.flags |= PRE_66;
 			break;
 		case OP_67:
-			at++, p.pre_flags |= PRE_67;
+			at++, p.flags |= PRE_67;
 			break;
 		case OP_LOCK:
-			at++, p.pre_flags |= PRE_LOCK;
+			at++, p.flags |= PRE_LOCK;
 			strcat(p.data, "lock ");
 			break;
 		case OP_REPNE:
-			at++, p.pre_flags |= PRE_REPNE;
+			at++, p.flags |= PRE_REPNE;
 			strcat(p.data, "repne ");
 			break;
 		case OP_REPE:
-			at++, p.pre_flags |= PRE_REPE;
+			at++, p.flags |= PRE_REPE;
 			strcat(p.data, "repe ");
 			break;
 		default: break;
@@ -1261,6 +1261,22 @@ namespace EyeStep
 				p.operands = std::vector<operand>(noperands); // allocate for the # of operands
 				p.info = op_info;
 
+				switch (noperands)
+				{
+				case 0:
+					break;
+				case 1:
+					p.flags |= OP_SINGLE;
+					break;
+				case 2:
+					p.flags |= OP_SRC_DEST;
+					break;
+				default:
+					p.flags |= OP_EXTENDED;
+					break;
+				}
+
+
 				uint8_t prev = MOD_NOT_FIRST;
 
 				for (size_t c = 0; c < noperands; c++)
@@ -1278,6 +1294,7 @@ namespace EyeStep
 						if (!constant)
 						{
 							p.operands[c].imm8 = *x;
+							p.operands[c].flags |= OP_IMM8;
 
 							if (*x > CHAR_MAX)
 							{
@@ -1289,6 +1306,8 @@ namespace EyeStep
 						}
 						else {
 							p.operands[c].disp8 = *x;
+							p.operands[c].flags |= OP_DISP8;
+
 							sprintf(s_offset, "%02X", p.operands[c].disp8);
 						}
 
@@ -1306,6 +1325,7 @@ namespace EyeStep
 						if (!constant)
 						{
 							p.operands[c].imm16 = *reinterpret_cast<uint16_t*>(x);
+							p.operands[c].flags |= OP_IMM16;
 
 							if (*x > INT16_MAX)
 							{
@@ -1317,6 +1337,8 @@ namespace EyeStep
 						}
 						else {
 							p.operands[c].disp16 = *reinterpret_cast<uint16_t*>(x);
+							p.operands[c].flags |= OP_DISP16;
+
 							sprintf(s_offset, "%04X", p.operands[c].disp16);
 						}
 
@@ -1334,10 +1356,11 @@ namespace EyeStep
 						if (!constant)
 						{
 							p.operands[c].imm32 = *reinterpret_cast<uint32_t*>(x);
+							p.operands[c].flags |= OP_IMM32;
 
 							if (p.operands[c].imm32 > INT_MAX)
 							{
-								sprintf(s_offset, "-%08X", (UINT_MAX + 1) - p.operands[c].imm32);
+								sprintf(s_offset, "-%08X", (UINT32_MAX + 1) - p.operands[c].imm32);
 							}
 							else {
 								sprintf(s_offset, "+%08X", p.operands[c].imm32);
@@ -1345,6 +1368,8 @@ namespace EyeStep
 						} else 
 						{
 							p.operands[c].disp32 = *reinterpret_cast<uint32_t*>(x);
+							p.operands[c].flags |= OP_DISP32;
+
 							sprintf(s_offset, "%08X", p.operands[c].disp32);
 						}
 
@@ -1413,9 +1438,9 @@ namespace EyeStep
 						// get the current address of where `at` is located
 						uint32_t location = p.address + (reinterpret_cast<uint32_t>(x) - reinterpret_cast<uint32_t>(p.bytes));
 						// base the 8-bit relative offset on it
-						p.operands[c].rel8 = (location + sizeof(uint8_t) + *reinterpret_cast<uint8_t*>(x));
+						p.operands[c].rel8 = *reinterpret_cast<uint8_t*>(x);
 
-						sprintf(s_offset, "%08X", p.operands[c].rel8);
+						sprintf(s_offset, "%08X", (location + sizeof(uint8_t) + p.operands[c].rel8));
 						strcat(p.data, s_offset);
 
 						at += sizeof(uint8_t);
@@ -1430,9 +1455,9 @@ namespace EyeStep
 						// get the current address of where `at` is located
 						uint32_t location = p.address + (reinterpret_cast<uint32_t>(x) - reinterpret_cast<uint32_t>(p.bytes));
 						// base the 16-bit relative offset on it
-						p.operands[c].rel16 = (location + sizeof(uint16_t) + *reinterpret_cast<uint16_t*>(x));
+						p.operands[c].rel16 = *reinterpret_cast<uint16_t*>(x);
 
-						sprintf(s_offset, "%08X", p.operands[c].rel16);
+						sprintf(s_offset, "%08X", (location + sizeof(uint16_t) + p.operands[c].rel16));
 						strcat(p.data, s_offset);
 
 						at += sizeof(uint16_t);
@@ -1447,9 +1472,9 @@ namespace EyeStep
 						// get the current address of where `at` is located
 						uint32_t location = p.address + (reinterpret_cast<uint32_t>(x) - reinterpret_cast<uint32_t>(p.bytes));
 						// base the 32-bit relative offset on it
-						p.operands[c].rel32 = (location + sizeof(uint32_t) + *reinterpret_cast<uint32_t*>(x));
+						p.operands[c].rel32 = *reinterpret_cast<uint32_t*>(x);
 
-						sprintf(s_offset, "%08X", p.operands[c].rel32);
+						sprintf(s_offset, "%08X", (location + sizeof(uint32_t) + p.operands[c].rel32));
 						strcat(p.data, s_offset);
 
 						at += sizeof(uint32_t);
@@ -1562,6 +1587,30 @@ namespace EyeStep
 						case OP_TYPES::STi:
 						{
 							// To-do: Apply markers...
+							if (p.flags & PRE_SEG_CS)
+							{
+								strcat(p.data, "cs:");
+							}
+							else if (p.flags & PRE_SEG_DS)
+							{
+								strcat(p.data, "ds:");
+							}
+							else if (p.flags & PRE_SEG_ES)
+							{
+								strcat(p.data, "es:");
+							}
+							else if (p.flags & PRE_SEG_SS)
+							{
+								strcat(p.data, "ss:");
+							}
+							else if (p.flags & PRE_SEG_FS)
+							{
+								strcat(p.data, "fs:");
+							}
+							else if (p.flags & PRE_SEG_GS)
+							{
+								strcat(p.data, "gs:");
+							}
 
 							if (c == 0)
 							{
