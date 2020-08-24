@@ -14,7 +14,6 @@
 #include <vector>
 #include <string>
 
-
 #define PRE_REPNE   			0x0001
 #define PRE_REPE   				0x0002
 #define PRE_66   				0x0004
@@ -46,15 +45,12 @@
 #define OP_SINGLE				0x00000001 // single operand in opcode (only Source)
 #define OP_SRC_DEST				0x00000002 // two operands in opcode (Typical) (Source and Destination)
 #define OP_EXTENDED				0x00000004 // more than two operands in the opcode
-#define OP_R8					0x00000010 // this operand has an 8-bit register
-#define OP_R16					0x00000020 // this operand has a 16-bit register
-#define OP_R32					0x00000040 // this operand has a 32-bit register
-#define OP_IMM8					0x00000080 // this operand has an 8-bit offset
-#define OP_IMM16				0x00000100 // this operand has a 16-bit offset
-#define OP_IMM32				0x00000200 // this operand has a 32-bit offset
-#define OP_DISP8				0x00000400 // this operand has an 8-bit constant value
-#define OP_DISP16				0x00000800 // this operand has a 16-bit constant value
-#define OP_DISP32				0x00001000 // this operand has a 32-bit constant value
+#define OP_IMM8					0x00000010 // this operand has an 8-bit offset
+#define OP_IMM16				0x00000020 // this operand has a 16-bit offset
+#define OP_IMM32				0x00000040 // this operand has a 32-bit offset
+#define OP_DISP8				0x00000080 // this operand has an 8-bit constant value
+#define OP_DISP16				0x00000100 // this operand has a 16-bit constant value
+#define OP_DISP32				0x00000200 // this operand has a 32-bit constant value
 
 namespace EyeStep
 {
@@ -225,9 +221,9 @@ namespace EyeStep
 		char data[256];
 		OP_INFO info;
 
+		DWORD flags;
 		uint8_t bytes[MAX_INSTR_READBITS / 8];
 		size_t len;
-		uint16_t pre_flags;
 		uintptr_t address;
 		std::vector<operand>operands;
 
@@ -236,17 +232,10 @@ namespace EyeStep
 			data[0] = '\0';
 			info = OP_INFO();
 
-			// allocate open spaces
 			operands = std::vector<operand>(4);
 
-			for (int i = 0; i < 4; i++)
-			{
-				// allocate blank spaces for registers
-				operands[i].reg = std::vector<uint8_t>(4);
-			}
-
 			address = 0;
-			pre_flags = 0;
+			flags = 0;
 			len = 0;
 		}
 
@@ -272,6 +261,7 @@ namespace EyeStep
 
 	extern void Open(void* procHandle);
 	extern inst ReadInstruction(uintptr_t address);
+
 	extern std::vector<EyeStep::inst> ReadInstructions(uintptr_t address, int count);
 	extern std::vector<EyeStep::inst> ReadInstructionRange(uintptr_t address_from, uintptr_t address_to);
 
