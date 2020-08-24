@@ -218,20 +218,21 @@ namespace EyeStep
 				(address % 16 == 0) 
 			 &&
 				// Check for 3 different prologues, each with different registers
-				((*reinterpret_cast<uint8_t*>(address) == 0x55 && *reinterpret_cast<uint16_t*>(address + 1) == 0xEC8B)
-			  || (*reinterpret_cast<uint8_t*>(address) == 0x53 && *reinterpret_cast<uint16_t*>(address + 1) == 0xDC8B)
-			  || (*reinterpret_cast<uint8_t*>(address) == 0x56 && *reinterpret_cast<uint16_t*>(address + 1) == 0xF48B))
+				((readByte(address) == 0x55 && readByte(address + 1) == 0xEC8B)
+			  || (readByte(address) == 0x53 && readByte(address + 1) == 0xDC8B)
+			  || (readByte(address) == 0x56 && readByte(address + 1) == 0xF48B))
 			);
 		}
 
 		bool isEpilogue(uint32_t address)
 		{
 			return (
-				(*reinterpret_cast<uint16_t*>(address - 1) == 0xC35D)
+				(readShort(address - 1) == 0xC35D)
 			 ||
-				(*reinterpret_cast<uint16_t*>(address - 1) == 0xC25D 
-			 &&  *reinterpret_cast<uint16_t*>(address + 1) >= 0 
-			 &&  *reinterpret_cast<uint16_t*>(address + 1) % 4 == 0)
+				(readShort(address - 1) == 0xC25D
+			 &&  readShort(address + 1) >= 0
+			 &&  readShort(address + 1) % 4 == 0
+				)
 			);
 		}
 
@@ -240,12 +241,12 @@ namespace EyeStep
 		// by simply checking for 16 null bytes
 		bool isValidCode(uint32_t address)
 		{
-			return !(*reinterpret_cast<uint64_t*>(address) == NULL && *reinterpret_cast<uint64_t*>(address + 8) == NULL);
+			return !(readQword(address) == NULL && readQword(address + 8) == NULL);
 		}
 
 		uint32_t getRel(uint32_t address)
 		{
-			return (address + 5 + *reinterpret_cast<signed int*>(address + 1));
+			return (address + 5 + static_cast<signed int>(readInt(address + 1)));
 		}
 
 		uint32_t nextPrologue(uint32_t address)
@@ -299,7 +300,7 @@ namespace EyeStep
 		{
 			uint32_t at = address;
 
-			if (*reinterpret_cast<uint8_t*>(at) == 0xE8 || *reinterpret_cast<uint8_t*>(at) == 0xE9)
+			if (readByte(at) == 0xE8 || readByte(at) == 0xE9)
 			{
 				at++;
 			}
@@ -307,8 +308,8 @@ namespace EyeStep
 			while (1)
 			{
 				if ((
-					*reinterpret_cast<uint8_t*>(at) == 0xE8 
-				 || *reinterpret_cast<uint8_t*>(at) == 0xE9
+					readByte(at) == 0xE8
+				 || readByte(at) == 0xE9
 					)
 				 &&
 					isCall(at)
@@ -343,7 +344,7 @@ namespace EyeStep
 		{
 			uint32_t at = address;
 
-			if (*reinterpret_cast<uint8_t*>(at) == 0xE8 || *reinterpret_cast<uint8_t*>(at) == 0xE9)
+			if (readByte(at) == 0xE8 || readByte(at) == 0xE9)
 			{
 				at--;
 			}
@@ -351,8 +352,8 @@ namespace EyeStep
 			while (1)
 			{
 				if ((
-					*reinterpret_cast<uint8_t*>(at) == 0xE8 
-				 || *reinterpret_cast<uint8_t*>(at) == 0xE9
+					readByte(at) == 0xE8
+				 || readByte(at) == 0xE9
 					)
 				 && 
 					isCall(at)
@@ -390,8 +391,8 @@ namespace EyeStep
 			while (1)
 			{
 				if ((
-					*reinterpret_cast<uint8_t*>(at) == 0xE8 
-				 || *reinterpret_cast<uint8_t*>(at) == 0xE9
+					readByte(at) == 0xE8
+				 || readByte(at) == 0xE9
 					)
 				&& 
 					getRel(at) == func_search
@@ -412,8 +413,8 @@ namespace EyeStep
 			while (1)
 			{
 				if ((
-					*reinterpret_cast<uint8_t*>(at) == 0xE8 
-				 || *reinterpret_cast<uint8_t*>(at) == 0xE9
+					readByte(at) == 0xE8
+				 || readByte(at) == 0xE9
 					)
 				&& 
 					getRel(at) == func_search
@@ -433,7 +434,7 @@ namespace EyeStep
 
 			while (1)
 			{
-				if (*reinterpret_cast<uint32_t*>(at) == ptr_search)
+				if (readInt(at) == ptr_search)
 				{
 					break;
 				}
@@ -449,7 +450,7 @@ namespace EyeStep
 
 			while (1)
 			{
-				if (*reinterpret_cast<uint32_t*>(at) == ptr_search)
+				if (readInt(at) == ptr_search)
 				{
 					break;
 				}
@@ -469,8 +470,8 @@ namespace EyeStep
 			while (at < func_end)
 			{
 				if ((
-					*reinterpret_cast<uint8_t*>(at) == 0xE8 
-				 || *reinterpret_cast<uint8_t*>(at) == 0xE9
+					readByte(at) == 0xE8 
+				 || readByte(at) == 0xE9
 					)
 				&& 
 					isPrologue(getRel(at))
