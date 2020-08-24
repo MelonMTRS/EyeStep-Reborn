@@ -54,6 +54,10 @@
 
 namespace EyeStep
 {
+	extern HMODULE base_module;
+	extern size_t base_module_size;
+	extern bool external_mode;
+
 	// See http://ref.x86asm.net/coder32.html documentation
 	// These are all the operand-types currently supported
 	// on the x86 chip set
@@ -257,9 +261,11 @@ namespace EyeStep
 		}
 	};
 
-	extern void* procHandle;
+	extern void* current_proc;
 
-	extern void open(void* procHandle);
+	extern HMODULE get_base_module(HANDLE proc, std::wstring process_name);
+	extern void open(HANDLE current_proc, HMODULE _module = nullptr);
+	extern void open(std::wstring process_name);
 	extern inst read(uintptr_t address);
 
 	extern std::vector<EyeStep::inst> read(uintptr_t address, int count);
