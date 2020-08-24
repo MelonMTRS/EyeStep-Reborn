@@ -597,7 +597,7 @@ namespace EyeStep
                 start = reinterpret_cast<uint32_t>(base_module) + base_module_size;
                 end = reinterpret_cast<uint32_t>(siSysInfo.lpMaximumApplicationAddress);
 
-                protection = PAGE_EXECUTE_READWRITE | PAGE_READWRITE;
+                protection = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READWRITE;
             }
             else
             {
@@ -636,14 +636,14 @@ namespace EyeStep
                 }
 
                 // Make sure the memory is committed, matches our protection, and isn't PAGE_GUARD.
-                if ((mbi.State & MEM_COMMIT) && (mbi.Protect & protection) && !(mbi.Protect & PAGE_GUARD || mbi.Protect & PAGE_NOACCESS))
+                if ((mbi.State & MEM_COMMIT) && (mbi.Protect == protection))
                 {
                     uint32_t region_base = reinterpret_cast<uint32_t>(mbi.BaseAddress);
 
                     // Scan all the memory in the region.
                     for (uint32_t i = region_base - (region_base % 16); i < region_base + mbi.RegionSize; i += align)
                     {
-                        bool bytes_match;
+                        bool bytes_match = false;
 
                         if (!external_mode)
                         {
@@ -652,7 +652,7 @@ namespace EyeStep
                         else {
                             uint8_t* bytes = new uint8_t[mbi.RegionSize];
 
-                            if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(i), &bytes, mbi.RegionSize, &bytes_read) == 0)
+                            if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(i), bytes, mbi.RegionSize, &bytes_read) == 0)
                             {
                                 bytes_match = compare_bytes(bytes, pattern, mask);
                             }
@@ -668,7 +668,7 @@ namespace EyeStep
                             {
                                 // Go through a series of extra checks,
                                 // make sure all are passed before it's a valid result
-                                int checks_pass = 1;
+                                size_t checks_pass = 0;
 
                                 for (scan_check check : checks)
                                 {
@@ -706,7 +706,10 @@ namespace EyeStep
                             }
                         }
                     }
-                }
+				}
+				else {
+					printf("Skipping region %08X\n", mbi.BaseAddress);
+				}
                 // Move onto the next region of memory.
                 start += mbi.RegionSize;
             }
@@ -718,16 +721,16 @@ namespace EyeStep
 		}
 
 		// converts a string like "Test" to an AOB string "54 65 73 74"
-		std::string aobstring(std::string str)
+		std::string aobstring(const char* str)
 		{
 			std::string aob = "";
 
-			for (int i = 0; i < str.length(); i++)
+			for (int i = 0; i < lstrlenA(str); i++)
 			{
 				auto b_char = static_cast<uint8_t>(str[i]);
 				aob += to_str(b_char);
 
-				if (i < str.length() - 1)
+				if (i < lstrlenA(str) - 1)
 				{
 					aob += 0x20;
 				}
@@ -750,6 +753,23 @@ namespace EyeStep
 			aob += to_str(bytes[0]);
 
 			return aob;
+		}
+
+		scan_results scan_xrefs(const char* str, int nresult)
+		{
+			scan_results result_list = scan(aobstring(str).c_str(), false, 4, nresult);
+			if (result_list.size() > 0)
+			{
+				return scan(ptrstring(result_list.back()).c_str());
+			}
+			else {
+				throw std::exception("No results found for string");
+			}
+		}
+
+		scan_results scan_xrefs(uint32_t result)
+		{
+			return scan(ptrstring(result).c_str());
 		}
 	}
 }
