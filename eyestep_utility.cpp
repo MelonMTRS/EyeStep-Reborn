@@ -102,7 +102,7 @@ namespace EyeStep
 				return *reinterpret_cast<uint8_t*>(address);
 
 			uint8_t bytes[sizeof(uint8_t)];
-			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(bytes), &useless);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(uint8_t), &useless);
 
 			return bytes[0];
 		}
@@ -127,7 +127,7 @@ namespace EyeStep
 				return *reinterpret_cast<uint16_t*>(address);
 
 			uint8_t bytes[sizeof(uint16_t)];
-			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(bytes), &useless);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(uint16_t), &useless);
 
 			return *reinterpret_cast<uint16_t*>(bytes);
 		}
@@ -138,7 +138,7 @@ namespace EyeStep
 				return *reinterpret_cast<uint32_t*>(address);
 
 			uint8_t bytes[sizeof(uint32_t)];
-			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(bytes), &useless);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(uint32_t), &useless);
 
 			return *reinterpret_cast<uint32_t*>(bytes);
 		}
@@ -149,7 +149,7 @@ namespace EyeStep
 				return *reinterpret_cast<float*>(address);
 
 			uint8_t bytes[sizeof(float)];
-			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(bytes), &useless);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(float), &useless);
 
 			return *reinterpret_cast<float*>(bytes);
 		}
@@ -160,7 +160,7 @@ namespace EyeStep
 				return *reinterpret_cast<uint64_t*>(address);
 
 			uint8_t bytes[sizeof(uint64_t)];
-			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(bytes), &useless);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(uint64_t), &useless);
 
 			return *reinterpret_cast<uint64_t*>(bytes);
 		}
@@ -171,7 +171,7 @@ namespace EyeStep
 				return *reinterpret_cast<double*>(address);
 
 			uint8_t bytes[sizeof(double)];
-			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(bytes), &useless);
+			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &bytes, sizeof(double), &useless);
 
 			return *reinterpret_cast<double*>(bytes);
 		}
@@ -218,9 +218,9 @@ namespace EyeStep
 				(address % 16 == 0) 
 			 &&
 				// Check for 3 different prologues, each with different registers
-				((readByte(address) == 0x55 && readByte(address + 1) == 0xEC8B)
-			  || (readByte(address) == 0x53 && readByte(address + 1) == 0xDC8B)
-			  || (readByte(address) == 0x56 && readByte(address + 1) == 0xF48B))
+				((readByte(address) == 0x55 && readShort(address + 1) == 0xEC8B)
+			  || (readByte(address) == 0x53 && readShort(address + 1) == 0xDC8B)
+			  || (readByte(address) == 0x56 && readShort(address + 1) == 0xF48B))
 			);
 		}
 
@@ -246,7 +246,7 @@ namespace EyeStep
 
 		uint32_t getRel(uint32_t address)
 		{
-			return (address + 5 + static_cast<signed int>(readInt(address + 1)));
+			return address + 5 + static_cast<signed int>(readInt(address + 1));
 		}
 
 		uint32_t nextPrologue(uint32_t address)
