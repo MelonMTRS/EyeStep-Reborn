@@ -521,11 +521,11 @@ namespace EyeStep
 			return pointers;
 		}
 
-		uint8_t getConvention(uint32_t func, size_t n_expected_Args)
+		uint8_t getConvention(uint32_t func, size_t n_expected_args)
 		{
 			uint8_t convention = c_cdecl;
 
-			if (n_expected_Args == 0)
+			if (n_expected_args == 0)
 			{
 				return convention;
 			}
@@ -562,27 +562,33 @@ namespace EyeStep
 			{
 				auto i = EyeStep::read(at);
 
-				auto src = i.source();
-				auto dest = i.destination();
-
-				if (dest.reg.size())
+				if (i.flags & OP_SRC_DEST || i.flags & OP_SINGLE)
 				{
-					if (dest.flags & OP_IMM8 && dest.reg[0] == R32_EBP && dest.imm8 != 4 && dest.imm8 < 0x7F)
-					{
-						//printf("arg offset: %02X\n", i.dest.imm8);
+					auto src = i.source();
+					auto dest = i.destination();
 
-						if (dest.imm8 > args)
+					if (src.flags & OP_R32)
+					{
+						if (dest.flags & OP_R32)
 						{
-							args = dest.imm8;
+							if (dest.flags & OP_IMM8 && dest.reg[0] == R32_EBP && dest.imm8 != 4 && dest.imm8 < 0x7F)
+							{
+								// printf("arg offset: %02X\n", dest.imm8);
+
+								if (dest.imm8 > args)
+								{
+									args = dest.imm8;
+								}
+							}
 						}
-					}
-					else if (src.flags & OP_IMM8 && src.reg[0] == R32_EBP && src.imm8 != 4 && src.imm8 < 0x7F)
-					{
-						//printf("arg offset: %02X\n", i.src.imm8);
-
-						if (src.imm8 > args)
+						else if (src.flags & OP_IMM8 && src.reg[0] == R32_EBP && src.imm8 != 4 && src.imm8 < 0x7F)
 						{
-							args = src.imm8;
+							// printf("arg offset: %02X\n", src.imm8);
+
+							if (src.imm8 > args)
+							{
+								args = src.imm8;
+							}
 						}
 					}
 				}
@@ -591,11 +597,11 @@ namespace EyeStep
 			}
 
 			// no pushed args were used, but we know there
-			// is a 1 or 2 EBP-arg difference, so it is either
+			// is a 1 or 2 EBP arg difference, so it is either
 			// a fastcall or a thiscall
 			if (args == 0)
 			{
-				switch (n_expected_Args)
+				switch (n_expected_args)
 				{
 				case 1:
 					return c_thiscall;
@@ -609,11 +615,11 @@ namespace EyeStep
 			args -= 8;
 			args = (args / 4) + 1;
 
-			if (args == n_expected_Args - 1)
+			if (args == n_expected_args - 1)
 			{
 				convention = c_thiscall;
 			}
-			else if (args == n_expected_Args - 2)
+			else if (args == n_expected_args - 2)
 			{
 				convention = c_fastcall;
 			}
@@ -786,6 +792,68 @@ namespace EyeStep
 			opcode += i.data;
 
 			printf("%s\n", i.data);
+
+			if (i.source().flags & OP_R32) // does source operand use a 32-bit register?
+			{
+				if (i.destination().flags & OP_R32) // does destination operand use a 32-bit register?
+				{
+
+				}
+
+				/*if (opcode.find("pop") != std::string::npos)
+				{
+					if (i.source().reg[0] == R32_ECX)
+					{
+						uses_ecx = FALSE;
+					}
+					else if (i.source().reg[0] == R32_EDX) 
+					{
+						uses_edx = FALSE;
+					}
+				}
+				else 
+				{
+					if (i.source().reg[0] == R32_ECX)
+					{
+						uses_ecx = TRUE;
+					}
+					else if (i.source().reg[0] == R32_EDX)
+					{
+						uses_edx = TRUE;
+					}
+				}*/
+
+				/*if (i.flags & OP_SRC_DEST)
+				{
+					if (i.source().reg[0] == R32_EAX)
+					{
+						return_value = i.destination();
+					}
+
+					if (strcmp(i.info.opcode_name, "test")
+						&& i.source().reg[0] == R32_EDX
+						&& i.destination().reg[0] == R32_EDX
+						&& !uses_edx
+						) {
+						convention = c_fastcall;
+					}
+					else if (strcmp(i.info.opcode_name, "test")
+						&& i.source().reg[0] == R32_ECX
+						&& i.destination().reg[0] == R32_ECX
+						&& !uses_ecx
+						) {
+						convention = c_thiscall;
+					}
+					else if (i.source().reg[0] == R32_EDX)
+					{
+						uses_edx = TRUE;
+					}
+					else if (i.source().reg[0] == R32_ECX)
+					{
+						uses_ecx = TRUE;
+					}
+				}*/
+			}
 
 			at += i.len;
 		}
