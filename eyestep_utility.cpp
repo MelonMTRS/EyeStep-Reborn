@@ -780,6 +780,15 @@ namespace EyeStep
 
 			return signature;
 		}
+
+		std::string getAnalysis(uint32_t func)
+		{
+			function_info info;
+			info.analyze(func);
+			std::string analysis = "";
+			analysis += info.psuedocode;
+			return analysis;
+		}
 	}
 
 
@@ -788,31 +797,59 @@ namespace EyeStep
 	{
 		start_address = 0;
 		convention = c_auto;
-		arg_bits = std::vector<uint8_t>();
+		args = std::vector<function_arg>();
 		return_bits = 0;
 		stack_cleanup = 0;
-		max_stack_size = 0;
 		function_size = 0;
-
 		psuedocode[0] = '\0';
-		strcpy(psuedocode, "Unidentified");
 	}
 
 
 	void function_info::analyze(uint32_t func)
 	{
-		uint32_t func_end = func + 16;
-		uint32_t at = func;
+		start_address = func;
+		uint32_t func_end = start_address + 16;
 
+		// Get the end address of this function
 		while (!util::isPrologue(func_end) && util::isValidCode(func_end))
 		{
 			func_end += 16;
 		}
 
+		function_size = func_end - func;
+
+		// Identify a compiled "strlen" in memory...
+		// which can be used to identify const char* args
+		// this only supports 1 const char* arg currently  =(
+		uint32_t strlen_at = NULL;
+		
+		for (int i = 0; i < function_size; i++)
+		{
+			uint8_t* bytes_strlen = util::readBytes(start_address + i, 8);
+
+			if (bytes_strlen[0] == 0x8A // mov al,[???]
+			 && bytes_strlen[2] >= 0x40 && bytes_strlen[2] < 0x48 // inc ???
+			 && bytes_strlen[3] == 0x84 && bytes_strlen[4] == 0xC0 // test al,al
+			 && bytes_strlen[5] == 0x75 // jnz
+			){
+				//while (1)
+				//{
+					strlen_at = start_address + i;
+					// printf("Identified strlen at %08X\n", strlen_at);
+				//}
+				break;
+			}
+			delete[] bytes_strlen;
+		}
+
+
 		uint8_t ecx_set = FALSE;
 		uint8_t edx_set = FALSE;
 
 		auto return_value = EyeStep::operand();
+		auto ebp_args = std::vector<uint32_t>();
+
+		uint32_t at = func;
 
 		while (at < func_end)
 		{
@@ -824,10 +861,11 @@ namespace EyeStep
 			std::string opcode = "";
 			opcode += i.data;
 
-			// not set yet
+			// not set yet?
 			if (convention == c_auto)
 			{
-				// default to the return value
+				// set the calling convention to the
+				// function's return
 				if (opcode.find("retn") != std::string::npos)
 				{
 					stack_cleanup = 0;
@@ -840,16 +878,68 @@ namespace EyeStep
 				}
 			}
 
-			if (src.flags & OP_R32) // does source operand use a 32-bit register?
+			if (src.flags & OP_R32) // does the source operand use a 32-bit register?
 			{
-				if (dest.flags & OP_R32) // does destination operand use a 32-bit register?
+				// mov [ebp+08], ???
+				// mov [ebp+0C], ???
+				// . . .
+				if (src.reg[0] == R32_EBP && src.imm8 >= 8 && src.imm8 < 0x80)
 				{
+					uint8_t found = FALSE;
+
+					for (uint32_t arg : ebp_args)
+					{
+						if (src.imm8 == arg)
+						{
+							found = TRUE;
+						}
+					}
+
+					if (!found)
+					{
+						// Append args from EBP
+						ebp_args.push_back(src.imm8);
+						args.push_back({ src.imm8, 32, false, at });
+					}
+				}
+
+				if (dest.flags & OP_R32) // does the destination operand use a 32-bit register?
+				{
+					// mov ???, [ebp+08]
+					// mov ???, [ebp+0C]
+					// . . .
+					if (dest.reg[0] == R32_EBP && dest.imm8 >= 8 && dest.imm8 < 0x80)
+					{
+						uint8_t found = FALSE;
+
+						for (uint32_t arg : ebp_args)
+						{
+							if (dest.imm8 == arg)
+							{
+								found = TRUE;
+							}
+						}
+
+						if (!found)
+						{
+							// Append args from EBP
+							ebp_args.push_back(dest.imm8);
+							args.push_back({ dest.imm8, 32, false, at });
+						}
+					}
+
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
 					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
 					){
+						// mov eax, ???
+						// or eax, ???
 						if (src.reg[0] == R32_EAX)
 						{
-							return_value = dest;
+							if (opcode.find("mov ") != std::string::npos
+							 || opcode.find("or ") != std::string::npos
+							){
+								return_value = dest;
+							}
 						}
 
 						/*if (opcode.find("test ") != std::string::npos
@@ -915,10 +1005,98 @@ namespace EyeStep
 
 			at += i.len;
 		}
+
+		// append the args from ECX/EDX
+		if (convention == c_thiscall)
+			args.push_back({ 0, 32, false, 0 });
+		else if (convention == c_fastcall)
+		{
+			args.push_back({ 0, 32, false, 0 });
+			args.push_back({ 0, 32, false, 0 });
+		}
+		else if (convention == c_auto)
+		{
+			// =) rip
+			convention = c_cdecl;
+		}
+
+		// adjust args...check for args that are used
+		// with a compiled `strlen` and change them to
+		// a const char* arg.
+		for (int i = args.size() - 1; i >= 0; i--)
+		{
+			if (args[i].location < strlen_at)
+			{
+				args.erase(args.begin() + i, args.end());
+				args.insert(args.begin() + i, { 0, 32, true, strlen_at });
+				break;
+			}
+		}
+
+
+		// Start writing to the psuedocode
+		// (we can start with the return value)
+		if (return_value.flags & OP_DISP8 || return_value.flags & OP_R8)
+		{
+			strcat(psuedocode, "bool ");
+			return_bits = sizeof(uint8_t);
+		}
+		else if (return_value.flags & OP_DISP16 || return_value.flags & OP_R16)
+		{
+			strcat(psuedocode, "short ");
+			return_bits = sizeof(uint16_t);
+		}
+		else if (return_value.flags & OP_DISP32 || return_value.flags & OP_R32)
+		{
+			strcat(psuedocode, "int ");
+			return_bits = sizeof(uint32_t);
+		}
 		
-		function_size = func_end - func;
-		start_address = func;
+		char c_addr[16];
+		sprintf(c_addr, "%08X", start_address);
+
+		strcat(psuedocode, convs[convention]);
+		strcat(psuedocode, " ");
+		strcat(psuedocode, c_addr);
+		strcat(psuedocode, "(");
+
+		for (int i = 0; i < args.size(); i++)
+		{
+			char c[2];
+			c[0] = 0x30 + i;
+			c[1] = '\0';
+
+			if (args[i].isCharPointer)
+			{
+				strcat(psuedocode, "const char*");
+			}
+			else if (args[i].bits == 8)
+			{
+				strcat(psuedocode, "byte");
+			}
+			else if (args[i].bits == 16)
+			{
+				strcat(psuedocode, "short");
+			}
+			else if (args[i].bits == 32)
+			{
+				strcat(psuedocode, "int");
+			}
+
+			strcat(psuedocode, " a");
+			strcat(psuedocode, c);
+
+			if (i < args.size() - 1)
+			{
+				strcat(psuedocode, ", ");
+			}
+		}
+
+		strcat(psuedocode, ")");
 	}
+
+
+
 
 
 	namespace scanner
