@@ -51,6 +51,16 @@
 #define OP_DISP8				0x00000080 // this operand has an 8-bit constant value
 #define OP_DISP16				0x00000100 // this operand has a 16-bit constant value
 #define OP_DISP32				0x00000200 // this operand has a 32-bit constant value
+#define OP_R8					0x00000400
+#define OP_R16					0x00000800
+#define OP_R32					0x00001000
+#define OP_R64					0x00002000
+#define OP_XMM					0x00004000
+#define OP_MM					0x00008000
+#define OP_ST					0x00010000
+#define OP_SREG					0x00020000
+#define OP_DR					0x00040000
+#define OP_CR					0x00080000
 
 namespace EyeStep
 {
