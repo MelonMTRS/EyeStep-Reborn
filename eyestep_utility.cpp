@@ -929,9 +929,6 @@ namespace EyeStep
 			writeBytes(new_func, data, at - data);
 			placeTrampoline(address, new_func, at - data);
 
-			printf("%08X\n", address);
-			printf("%08X\n", new_func);
-
 			//
 			// Wait for the hook to be executed, and 
 			// our signal value to be set to 1 (anything non-null)
