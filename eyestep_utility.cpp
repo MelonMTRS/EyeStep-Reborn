@@ -816,7 +816,21 @@ namespace EyeStep
 			func_end += 16;
 		}
 
+		while (!util::isEpilogue(func_end))
+		{
+			func_end--;
+		}
+
+		if (util::readByte(func_end) == 0xC3)
+		{
+			func_end++;
+		}
+		else {
+			func_end += 3;
+		}
+
 		function_size = func_end - func;
+
 
 		// Identify a compiled "strlen" in memory...
 		// which can be used to identify const char* args
@@ -888,12 +902,8 @@ namespace EyeStep
 					uint8_t found = FALSE;
 
 					for (uint32_t arg : ebp_args)
-					{
 						if (src.imm8 == arg)
-						{
 							found = TRUE;
-						}
-					}
 
 					if (!found)
 					{
@@ -913,12 +923,8 @@ namespace EyeStep
 						uint8_t found = FALSE;
 
 						for (uint32_t arg : ebp_args)
-						{
 							if (dest.imm8 == arg)
-							{
 								found = TRUE;
-							}
-						}
 
 						if (!found)
 						{
