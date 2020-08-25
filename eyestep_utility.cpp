@@ -1,4 +1,6 @@
 #include "eyestep_utility.h"
+#include <fstream>
+
 
 namespace EyeStep
 {
@@ -1279,7 +1281,48 @@ namespace EyeStep
 	}
 
 
+	namespace io
+	{
+		std::string readFile(const char* filename)
+		{
+			std::string output = "";
+			std::ifstream stream;
 
+			stream.open(filename);
+			stream.seekg(0, std::ios::end);
+
+			size_t length = stream.tellg();
+			stream.seekg(0, std::ios::beg);
+
+			char* buffer = new char[length];     
+			stream.read(buffer, length);
+			output += buffer;
+
+			stream.close();
+			delete[] buffer;
+
+			return output;
+		}
+
+		void writeFile(const char* filename, std::string field)
+		{
+			std::ofstream outfile(filename, std::ofstream::trunc); // truncate
+			outfile << field;
+			outfile.close();
+		}
+
+		void appendFile(const char* filename, std::string field)
+		{
+			std::ofstream outfile(filename, std::ios_base::app); // append instead of overwrite
+			outfile << field;
+			outfile.close();
+		}
+
+		std::string readRawHttp(const char* url)
+		{
+
+		}
+	}
 
 
 	namespace scanner
