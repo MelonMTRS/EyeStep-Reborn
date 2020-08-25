@@ -7,6 +7,8 @@ It's original and table-based from the resources provided at:
 http://ref.x86asm.net/coder32.html
 
 It features everything except for SIMD instructions
+but I intend to add support for that and possibly x64
+in the future.
 
 
 # Usage
@@ -65,4 +67,14 @@ mov eax,[10000000] \/\/\/
 operands[0].opmode = imm32
 operands[0].imm32 = 10000000
 
+
+
+
+# API / Utility library
+
+eyestep_utility.h and eyestep_utility.cpp provide a vast range
+of functions for reading/writing/processing memory in either a
+DLL or remote application.
+
+Documentation on its way
 
