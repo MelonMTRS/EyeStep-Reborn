@@ -85,12 +85,12 @@ namespace EyeStep
 		extern std::vector<uint32_t> getCalls(uint32_t address);
 		extern std::vector<uint32_t> getPointers(uint32_t address);
 
-		extern uint8_t getConvention(uint32_t func, size_t n_expected_args); // method to get calling convention with 100% accuracy
-		extern uint8_t getConvention(uint32_t func); // primary method (heuristic analysis!)
+		extern uint8_t getConvention(uint32_t func, size_t n_expected_args); // method to grab calling conventions with 100% accuracy
+		extern uint8_t getConvention(uint32_t func); // primary 'guessing' method
 		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_auto);
 		extern std::string getAnalysis(uint32_t func);
-		extern std::vector<uint32_t> debugAddress(uint32_t address, uint8_t r32, uint32_t start_offset, size_t count = 1);
 
+		extern std::vector<uint32_t> debug_r32(uint32_t address, uint8_t r32, uint32_t start_offset, size_t count = 1);
 		extern std::string generate_sig(uint32_t func, size_t instructions);
 	}
 
