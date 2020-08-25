@@ -9,7 +9,7 @@ namespace EyeStep
 		extern DWORD setMemoryPage(uint32_t address, DWORD protect, size_t size = 0x3FF);
 
 		extern void writeByte(uint32_t address, uint8_t value);
-		extern void writeBytes(uint32_t address, uint8_t* value, size_t count);
+		extern void writeBytes(uint32_t address, void* value, size_t count);
 		extern void writeShort(uint32_t address, uint16_t value);
 		extern void writeInt(uint32_t address, uint32_t value);
 		extern void writeFloat(uint32_t address, float value);
