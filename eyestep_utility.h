@@ -94,6 +94,13 @@ namespace EyeStep
 		extern std::string generate_sig(uint32_t func, size_t instructions);
 	}
 
+	namespace io
+	{
+		extern std::string readFile(const char* filename);
+		extern void writeFile(const char* filename, std::string field);
+		extern void appendFile(const char* filename, std::string field);
+	}
+
 	namespace scanner
 	{
 		typedef std::vector<uint32_t> scan_results;
