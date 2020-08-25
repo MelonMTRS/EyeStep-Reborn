@@ -1610,22 +1610,27 @@ namespace EyeStep
 							strcat(p.data, "1");
 							break;
 						case OP_TYPES::xmm0:
+							p.operands[c].append_reg(0);
 							strcat(p.data, "xmm0");
 							p.operands[c].flags |= OP_XMM;
 							break;
 						case OP_TYPES::AL:
+							p.operands[c].append_reg(R8_AL);
 							strcat(p.data, "al");
 							p.operands[c].flags |= OP_R8;
 							break;
 						case OP_TYPES::AH:
+							p.operands[c].append_reg(R8_AH);
 							strcat(p.data, "ah");
 							p.operands[c].flags |= OP_R8;
 							break;
 						case OP_TYPES::AX:
+							p.operands[c].append_reg(R16_AX);
 							strcat(p.data, "ax");
 							p.operands[c].flags |= OP_R16;
 							break;
 						case OP_TYPES::CL:
+							p.operands[c].append_reg(R8_CL);
 							strcat(p.data, "cl");
 							p.operands[c].flags |= OP_R8;
 							break;
@@ -1645,14 +1650,17 @@ namespace EyeStep
 							strcat(p.data, "fs");
 							break;
 						case OP_TYPES::EAX:
+							p.operands[c].append_reg(R32_EAX);
 							strcat(p.data, "eax");
 							p.operands[c].flags |= OP_R32;
 							break;
 						case OP_TYPES::ECX:
+							p.operands[c].append_reg(R32_ECX);
 							strcat(p.data, "ecx");
 							p.operands[c].flags |= OP_R32;
 							break;
 						case OP_TYPES::EBP:
+							p.operands[c].append_reg(R32_EBX);
 							strcat(p.data, "ebp");
 							p.operands[c].flags |= OP_R32;
 							break;
