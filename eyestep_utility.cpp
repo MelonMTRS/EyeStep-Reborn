@@ -853,7 +853,7 @@ namespace EyeStep
 			return analysis;
 		}
 
-		std::vector<uint32_t> debugAddress(uint32_t address, uint8_t r32, uint32_t offset, size_t count)
+		std::vector<uint32_t> debug_r32(uint32_t address, uint8_t r32, uint32_t offset, size_t count)
 		{
 			auto results = std::vector<uint32_t>();
 
