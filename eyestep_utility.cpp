@@ -2,8 +2,18 @@
 
 namespace EyeStep
 {
+	const char* convs[] =
+	{
+		"__cdecl",
+		"__stdcall",
+		"__fastcall",
+		"__thiscall",
+		"[auto-generated]"
+	};
+
 	namespace util
 	{
+		auto savedRoutines = std::vector<uint32_t>();
 		DWORD useless;
 
 		DWORD setMemoryPage(uint32_t address, DWORD protect, size_t size)
@@ -510,8 +520,337 @@ namespace EyeStep
 
 			return pointers;
 		}
+
+		uint8_t getConvention(uint32_t func, size_t n_expected_Args)
+		{
+			uint8_t convention = c_cdecl;
+
+			if (n_expected_Args == 0)
+			{
+				return convention;
+			}
+
+			uint32_t epilogue = func + 16;
+			while (!isPrologue(epilogue) && isValidCode(epilogue))
+			{
+				epilogue += 16;
+			}
+
+			uint32_t args = 0;
+			uint32_t func_start = func;
+			uint32_t func_end = epilogue;
+
+			while (!isEpilogue(epilogue))
+			{
+				epilogue--;
+			}
+
+			if (readByte(epilogue) == 0xC2)
+			{
+				convention = c_stdcall;
+			}
+			else
+			{
+				convention = c_cdecl;
+			}
+
+			// search for the highest ebp offset, which will 
+			// indicate the number of args that were pushed
+			// on the stack, rather than placed in ECX/EDX
+			uint32_t at = func_start;
+			while (at < func_end)
+			{
+				auto i = EyeStep::read(at);
+
+				auto src = i.source();
+				auto dest = i.destination();
+
+				if (dest.reg.size())
+				{
+					if (dest.flags & OP_IMM8 && dest.reg[0] == R32_EBP && dest.imm8 != 4 && dest.imm8 < 0x7F)
+					{
+						//printf("arg offset: %02X\n", i.dest.imm8);
+
+						if (dest.imm8 > args)
+						{
+							args = dest.imm8;
+						}
+					}
+					else if (src.flags & OP_IMM8 && src.reg[0] == R32_EBP && src.imm8 != 4 && src.imm8 < 0x7F)
+					{
+						//printf("arg offset: %02X\n", i.src.imm8);
+
+						if (src.imm8 > args)
+						{
+							args = src.imm8;
+						}
+					}
+				}
+
+				at += i.len;
+			}
+
+			// no pushed args were used, but we know there
+			// is a 1 or 2 EBP-arg difference, so it is either
+			// a fastcall or a thiscall
+			if (args == 0)
+			{
+				switch (n_expected_Args)
+				{
+				case 1:
+					return c_thiscall;
+					break;
+				case 2:
+					return c_fastcall;
+					break;
+				}
+			}
+
+			args -= 8;
+			args = (args / 4) + 1;
+
+			if (args == n_expected_Args - 1)
+			{
+				convention = c_thiscall;
+			}
+			else if (args == n_expected_Args - 2)
+			{
+				convention = c_fastcall;
+			}
+
+			return convention;
+		}
+
+
+		uint8_t getConvention(uint32_t func)
+		{
+			function_info info;
+			info.analyze(func);
+			return info.convention;
+		}
+
+
+		uint32_t createRoutine(uint32_t function, uint8_t n_args, uint8_t convention)
+		{
+			if (!external_mode && convention == c_cdecl)
+			{
+				return function;
+			}
+			
+			if (convention == c_auto)
+			{
+				convention = getConvention(function, n_args);
+			}
+
+			uint32_t func = function;
+			uint32_t size = 0;
+			uint8_t data[128];
+
+			auto new_func = reinterpret_cast<uint32_t>(VirtualAlloc(nullptr, 128, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE));
+			if (new_func == NULL)
+			{
+				throw std::exception("Error while allocating memory");
+				return func;
+			}
+
+			data[size++] = 0x55; // push ebp
+
+			data[size++] = 0x8B; // mov ebp,esp
+			data[size++] = 0xEC;
+
+			if (convention == c_cdecl)
+			{
+				for (int i = (n_args * 4) + 8; i > 8; i -= 4)
+				{
+					data[size++] = 0xFF; // push [ebp+??]
+					data[size++] = 0x75;
+					data[size++] = i - 4;
+				}
+				data[size++] = 0xE8; // call func
+				*reinterpret_cast<uint32_t*>(data + size) = func - (new_func + size + 4);
+				size += 4;
+				data[size++] = 0x83;
+				data[size++] = 0xC4;
+				data[size++] = n_args * 4;
+			}
+			else if (convention == c_stdcall)
+			{
+				for (int i = (n_args * 4) + 8; i > 8; i -= 4)
+				{
+					data[size++] = 0xFF; // push [ebp+??]
+					data[size++] = 0x75;
+					data[size++] = i - 4;
+				}
+
+				data[size++] = 0xE8; // call func
+				*reinterpret_cast<uint32_t*>(data + size) = func - (new_func + size + 4);
+				size += 4;
+			}
+			else if (convention == c_thiscall)
+			{
+				data[size++] = 0x51; // push ecx
+
+				for (int i = n_args; i > 1; i--)
+				{
+					data[size++] = 0xFF; // push [ebp+??]
+					data[size++] = 0x75;
+					data[size++] = (i + 1) * 4;
+				}
+
+				data[size++] = 0x8B; // mov ecx,[ebp+08]
+				data[size++] = 0x4D;
+				data[size++] = 0x08;
+
+				data[size++] = 0xE8; // call func
+				*reinterpret_cast<uint32_t*>(data + size) = func - (new_func + size + 4);
+				size += 4;
+
+				data[size++] = 0x59; // pop ecx
+			}
+			else if (convention == c_fastcall)
+			{
+				data[size++] = 0x51; // push ecx
+				data[size++] = 0x52; // push edx
+
+				for (int i = n_args; i > 2; i--)
+				{
+					data[size++] = 0xFF; // push [ebp+??]
+					data[size++] = 0x75;
+					data[size++] = (i + 1) * 4;
+				}
+
+				data[size++] = 0x8B; // mov ecx,[ebp+08]
+				data[size++] = 0x4D;
+				data[size++] = 0x08;
+				data[size++] = 0x8B; // mov edx,[ebp+0C]
+				data[size++] = 0x55;
+				data[size++] = 0x0C;
+
+				data[size++] = 0xE8; // call func
+				*reinterpret_cast<uint32_t*>(data + size) = func - (new_func + size + 4);
+				size += 4;
+
+				data[size++] = 0x59; // pop ecx
+				data[size++] = 0x5A; // pop edx
+			}
+
+			data[size++] = 0x5D; // pop ebp
+			data[size++] = 0xC3; // retn
+			//data[size++] = 0xC2; // ret xx
+			//data[size++] = n_Args * 4;
+			//data[size++] = 0x00;
+
+			memcpy_s(reinterpret_cast<void*>(new_func), size, &data, size);
+
+			savedRoutines.push_back(new_func);
+
+			return new_func;
+		}
 	}
 
+
+
+	function_info::function_info()
+	{
+		start_address = 0;
+		convention = c_auto;
+		arg_bits = std::vector<uint8_t>();
+		return_bits = 0;
+		stack_cleanup = 0;
+		max_stack_size = 0;
+		function_size = 0;
+
+		psuedocode[0] = '\0';
+		strcpy(psuedocode, "Unidentified");
+	}
+
+	void function_info::analyze(uint32_t func)
+	{
+		uint32_t func_end = func + 16;
+		uint32_t at = func;
+
+		while (!util::isPrologue(func_end) && util::isValidCode(func_end))
+		{
+			func_end += 16;
+		}
+
+		uint8_t uses_ecx = 0;
+		uint8_t uses_edx = 0;
+		auto return_value = EyeStep::operand();
+
+		while (at < func_end)
+		{
+			auto i = EyeStep::read(at);
+
+			std::string opcode = "";
+			opcode += i.data;
+
+			printf("%s\n", i.data);
+
+			if (i.source().flags & OP_R32)
+			{
+				/*if (opcode.find("pop") != std::string::npos)
+				{
+					if (i.source().reg[0] == R32_ECX)
+					{
+						uses_ecx = FALSE;
+					}
+					else if (i.source().reg[0] == R32_EDX) 
+					{
+						uses_edx = FALSE;
+					}
+				}
+				else 
+				{
+					if (i.source().reg[0] == R32_ECX)
+					{
+						uses_ecx = TRUE;
+					}
+					else if (i.source().reg[0] == R32_EDX)
+					{
+						uses_edx = TRUE;
+					}
+				}*/
+
+				/*if (i.flags & OP_SRC_DEST)
+				{
+					if (i.source().reg[0] == R32_EAX)
+					{
+						return_value = i.destination();
+					}
+
+					if (strcmp(i.info.opcode_name, "test")
+						&& i.source().reg[0] == R32_EDX
+						&& i.destination().reg[0] == R32_EDX
+						&& !uses_edx
+						) {
+						convention = c_fastcall;
+					}
+					else if (strcmp(i.info.opcode_name, "test")
+						&& i.source().reg[0] == R32_ECX
+						&& i.destination().reg[0] == R32_ECX
+						&& !uses_ecx
+						) {
+						convention = c_thiscall;
+					}
+					else if (i.source().reg[0] == R32_EDX)
+					{
+						uses_edx = TRUE;
+					}
+					else if (i.source().reg[0] == R32_ECX)
+					{
+						uses_ecx = TRUE;
+					}
+				}*/
+			}
+
+			at += i.len;
+		}
+
+		
+		function_size = func_end - func;
+		start_address = func;
+	}
 
 
 	namespace scanner
@@ -742,6 +1081,7 @@ namespace EyeStep
 		scan_results scan_xrefs(const char* str, int nresult)
 		{
 			scan_results result_list = scan(aobstring(str).c_str(), true, 4, nresult);
+
 			if (result_list.size() > 0)
 			{
 				return scan(ptrstring(result_list.back()).c_str());
