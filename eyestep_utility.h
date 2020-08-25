@@ -63,7 +63,7 @@ namespace EyeStep
 
 		extern uint32_t rebase(uint32_t address);
 		extern uint32_t aslr(uint32_t address);
-		extern uint32_t unaslr(uint32_t address);
+		extern uint32_t raslr(uint32_t address);
 		extern bool isRel(uint32_t address);
 		extern bool isCall(uint32_t address);
 		extern bool isPrologue(uint32_t address);
