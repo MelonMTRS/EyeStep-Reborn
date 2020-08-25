@@ -58,6 +58,42 @@ namespace EyeStep
 	extern size_t base_module_size;
 	extern bool external_mode;
 
+	enum
+	{
+		R8_AL,
+		R8_CL,
+		R8_DL,
+		R8_BL,
+		R8_AH,
+		R8_CH,
+		R8_DH,
+		R8_BH,
+	};
+
+	enum
+	{
+		R16_AX,
+		R16_CX,
+		R16_DX,
+		R16_BX,
+		R16_SP,
+		R16_BP,
+		R16_SI,
+		R16_DI,
+	};
+
+	enum
+	{
+		R32_EAX,
+		R32_ECX,
+		R32_EDX,
+		R32_EBX,
+		R32_ESP,
+		R32_EBP,
+		R32_ESI,
+		R32_EDI,
+	};
+
 	// See http://ref.x86asm.net/coder32.html documentation
 	// These are all the operand-types currently supported
 	// on the x86 chip set
