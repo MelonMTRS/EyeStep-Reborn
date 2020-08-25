@@ -1121,7 +1121,11 @@ namespace EyeStep
 
 	std::string to_str(uint8_t b)
 	{
-		return "";
+		std::string result = "";
+		char msg[8];
+		sprintf(msg, "%02X", b);
+		result += msg;
+		return result;
 	}
 
 	// Directly sets the current process handle
