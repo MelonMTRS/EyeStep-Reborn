@@ -11,6 +11,7 @@ but I intend to add support for that and possibly x64
 in the future.
 
 
+
 # Usage
 
 To use EyeStep you simply include eyestep.h where needed
@@ -18,11 +19,12 @@ use EyeStep::ReadInstruction(address) to interpret the approximate
 x86 instruction at 'address'.
 You can view the disassembly like so:
 
-auto instr = EyeStep::ReadInstruction(0x12000000); // returns an EyeStep::inst object
-std::cout << instr.data << std::endl;
+EyeStep::open(GetCurrentProcess()); // essential for more accurate disassembly output
+auto instr = EyeStep::read(0x12000000); // returns an 'EyeStep::inst' object
+std::cout << instr.data << std::endl; // displays the processed instruction (string)
 
 
-The inst, or, instruction class, contains the following:
+The EyeStep::inst / instruction class contains the following:
 
 data - text translation of disassembly
 len - length of instruction
@@ -30,10 +32,10 @@ pre_flags - OR'd flags for instruction prefixes
 address - location in memory of this instruction (whatever you called ReadInstruction with)
 operands - table of operands used
 
-'operands' can contain up to 4 operands per instruction.
+'operands' contains up to 4 operands (blank by default) per instruction 
 for example, mov eax,[ebx] contains 2 operands (source & destination)
-so for source you would use operands[0].
-For destination you would use operands[1].
+For the source operand you can use operands[0], or inst.source()
+For destination, you can use operands[1], or inst.destination()
 
 
 The operand class contains the following:
@@ -77,4 +79,6 @@ of functions for reading/writing/processing memory in either a
 DLL or remote application.
 
 Documentation on its way
+
+
 
