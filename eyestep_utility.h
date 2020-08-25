@@ -80,6 +80,7 @@ namespace EyeStep
 		extern uint8_t getConvention(uint32_t func); // primary method (heuristic analysis!)
 		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_cdecl);
 
+		extern std::string generate_sig(uint32_t func, size_t instructions);
 	}
 
 	namespace scanner
