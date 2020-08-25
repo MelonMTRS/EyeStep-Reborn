@@ -87,7 +87,7 @@ namespace EyeStep
 
 		extern uint8_t getConvention(uint32_t func, size_t n_expected_args); // method to get calling convention with 100% accuracy
 		extern uint8_t getConvention(uint32_t func); // primary method (heuristic analysis!)
-		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_cdecl);
+		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_auto);
 		extern std::string getAnalysis(uint32_t func);
 		extern std::vector<uint32_t> debugAddress(uint32_t address, uint8_t r32, uint32_t start_offset, size_t count = 1);
 
@@ -99,6 +99,23 @@ namespace EyeStep
 		extern std::string readFile(const char* filename);
 		extern void writeFile(const char* filename, std::string field);
 		extern void appendFile(const char* filename, std::string field);
+	}
+
+	namespace remote
+	{
+		// reserved for executables
+		class f_remote
+		{
+		public:
+			/*
+			f_remote();
+			~f_remote();
+
+			void init();
+			void finish();
+			void run();
+			*/
+		};
 	}
 
 	namespace scanner
