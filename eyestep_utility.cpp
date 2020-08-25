@@ -201,7 +201,7 @@ namespace EyeStep
 			return (reinterpret_cast<uint32_t>(base_module) + address) - 0x400000;
 		}
 
-		uint32_t unaslr(uint32_t address)
+		uint32_t raslr(uint32_t address)
 		{
 			return (address - reinterpret_cast<uint32_t>(base_module)) + 0x400000;
 		}
