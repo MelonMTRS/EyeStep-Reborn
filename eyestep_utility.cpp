@@ -690,17 +690,25 @@ namespace EyeStep
 			return info.convention;
 		}
 
-
-		uint32_t createRoutine(uint32_t function, uint8_t n_args, uint8_t convention)
+		// When used in a DLL:
+		// If the convention is a cdecl, it will not create a new routine.
+		// otherwise, it will create a routine to call the function as if it were a cdecl.
+		// This means every typedef in your DLL can be a __cdecl.
+		// No need for updating the conventions, if you use this on the function addresses.
+		//
+		// When used in an EXE: 
+		// This function will allocate a new portion of memory
+		// which invokes the function. However, this newly allocated
+		// function can be used as a __cdecl.
+		// Same as above, but it will allocate memory for __cdecl  functions also.
+		// 
+		uint32_t createRoutine(uint32_t function, uint8_t n_args)
 		{
+			uint8_t convention = getConvention(function, n_args);
+
 			if (!external_mode && convention == c_cdecl)
 			{
 				return function;
-			}
-			
-			if (convention == c_auto)
-			{
-				convention = getConvention(function, n_args);
 			}
 
 			uint32_t func = function;
@@ -984,34 +992,29 @@ namespace EyeStep
 	void function_info::analyze(uint32_t func)
 	{
 		start_address = func;
-		uint32_t func_end = start_address + 16;
+		uint32_t func_end = util::nextPrologue(start_address);
 
-		// Get the end address of this function
-		while (!util::isPrologue(func_end) && util::isValidCode(func_end))
-		{
-			func_end += 16;
-		}
-
+		// Get the return of this function
 		while (!util::isEpilogue(func_end))
 		{
 			func_end--;
 		}
 
 		if (util::readByte(func_end) == 0xC3)
-		{
-			func_end++;
-		}
+			func_end += 1;
 		else {
 			func_end += 3;
 		}
 
+		// this is the absolute function size
 		function_size = func_end - func;
 
 
-		// Identify a compiled "strlen" in memory...
-		// which can be used to identify const char* args
-		// this only supports 1 const char* arg currently  =(
-		uint32_t strlen_at = NULL;
+		// Identify compiled "strlen" in memory...
+		// we can identify when the compiler generates this
+		// simply by AOB-scan or checking the bytes.
+		// This is used to identify const char* args.
+		auto inlined_strlen = std::vector<uint32_t>();
 		
 		for (int i = 0; i < function_size; i++)
 		{
@@ -1022,24 +1025,21 @@ namespace EyeStep
 			 && bytes_strlen[3] == 0x84 && bytes_strlen[4] == 0xC0 // test al,al
 			 && bytes_strlen[5] == 0x75 // jnz
 			){
-				//while (1)
-				//{
-					strlen_at = start_address + i;
-					// printf("Identified strlen at %08X\n", strlen_at);
-				//}
-				break;
+				inlined_strlen.push_back( start_address + i );
+				i += 8;
 			}
+
 			delete[] bytes_strlen;
 		}
 
 
 		uint8_t ecx_set = FALSE;
 		uint8_t edx_set = FALSE;
+		uint32_t at = func;
 
 		auto return_value = EyeStep::operand();
 		auto ebp_args = std::vector<uint32_t>();
 
-		uint32_t at = func;
 
 		while (at < func_end)
 		{
@@ -1068,7 +1068,8 @@ namespace EyeStep
 				}
 			}
 
-			if (src.flags & OP_R32) // does the source operand use a 32-bit register?
+			// does the source operand use a register?
+			if (src.flags & OP_R32) 
 			{
 				// mov [ebp+08], ???
 				// mov [ebp+0C], ???
@@ -1089,7 +1090,8 @@ namespace EyeStep
 					}
 				}
 
-				if (dest.flags & OP_R32) // does the destination operand use a 32-bit register?
+				// does the destination operand use a register?
+				if (dest.flags & OP_R32) 
 				{
 					// mov ???, [ebp+08]
 					// mov ???, [ebp+0C]
@@ -1110,9 +1112,13 @@ namespace EyeStep
 						}
 					}
 
+					// instruction does not use ecx or edx in both operands.
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
 					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
 					){
+						// Figure out what the very last thing is
+						// that gets placed into EAX ( the return value )
+
 						// mov eax, ???
 						// or eax, ???
 						if (src.reg[0] == R32_EAX)
@@ -1138,7 +1144,7 @@ namespace EyeStep
 							) {
 							convention = c_thiscall;
 						}*/
-					
+						
 						if (src.reg[0] == R32_EDX)
 						{
 							edx_set = TRUE;
@@ -1147,10 +1153,14 @@ namespace EyeStep
 						{
 							ecx_set = TRUE;
 						}
+						// EDX was used in the destination operand, before
+						// it was allocated. It must be a fastcall.
 						else if (dest.reg[0] == R32_EDX && !edx_set)
 						{
 							convention = c_fastcall;
 						}
+						// ECX was used in the destination operand, before
+						// it was allocated. It must be a thiscall.
 						else if (dest.reg[0] == R32_ECX && !ecx_set)
 						{
 							if (convention != c_fastcall)
@@ -1159,8 +1169,15 @@ namespace EyeStep
 							}
 						}
 					}
+					else {
+						// an instruction was used with `ecx,ecx`
+						// or `edx,edx`.
+						// We may have to do something about this here...
+					}
 				}
 				else {
+					// SINGLE OPERAND INSTRUCTION
+					// Check if it pops ECX or pops EDX
 					if (opcode.find("pop ") != std::string::npos)
 					{
 						if (src.reg[0] == R32_ECX)
@@ -1171,15 +1188,16 @@ namespace EyeStep
 						{
 							edx_set = FALSE;
 						}
+					// Check if it pushes ECX or pushes EDX
 					} else if (opcode.find("push ") != std::string::npos)
 					{
 						if (src.reg[0] == R32_ECX)
 						{
-							ecx_set = TRUE;
+							ecx_set = TRUE; // ECX HAS been pushed, meaning it cannot be a thiscall
 						}
 						else if (src.reg[0] == R32_EDX)
 						{
-							edx_set = TRUE;
+							edx_set = TRUE; // EDX HAS been pushed meaning it cannot be a fastcall
 						}
 					}
 				}
@@ -1188,7 +1206,8 @@ namespace EyeStep
 			at += i.len;
 		}
 
-		// append the args from ECX/EDX
+		// append the args from ECX/EDX to the args
+		// identified from offsets of EBP.
 		if (convention == c_thiscall)
 			args.push_back({ 0, 32, false, 0 });
 		else if (convention == c_fastcall)
@@ -1198,24 +1217,25 @@ namespace EyeStep
 		}
 		else if (convention == c_auto)
 		{
-			// =) rip
-			convention = c_cdecl;
+			// set the default calling convention if it could not be identified...
+			convention = c_cdecl; // maybe do what IDA pro does and put "usercall" L0L.
 		}
 
-		// adjust args...check for args that are used
-		// with a compiled `strlen` and change them to
-		// a const char* arg.
-		// as of now, it onlys support one const char*
-		// arg lol so find the arg closest to a strlen
-		if (strlen_at)
+		// adjust args...check for args that were used
+		// with a compiler-generated `strlen()` and identify
+		// them as a const char* arg.
+		if (inlined_strlen.size())
 		{
-			for (int i = args.size() - 1; i >= 0; i--)
+			for (uint32_t r : inlined_strlen)
 			{
-				if (args[i].location < strlen_at)
+				for (int i = args.size() - 1; i >= 0; i--)
 				{
-					args.erase(args.begin() + i, args.end());
-					args.insert(args.begin() + i, { 0, 32, true, strlen_at });
-					break;
+					if (args[i].location < r)
+					{
+						args.erase(args.begin() + i, args.end());
+						args.insert(args.begin() + i, { 0, 32, true, r });
+						break;
+					}
 				}
 			}
 		}
@@ -1224,7 +1244,7 @@ namespace EyeStep
 		// (we can start with the return value)
 		if (return_value.flags & OP_DISP8 || return_value.flags & OP_R8)
 		{
-			strcat(psuedocode, "bool ");
+			strcat(psuedocode, "bool "); // chances are it's a bool value
 			return_bits = sizeof(uint8_t);
 		}
 		else if (return_value.flags & OP_DISP16 || return_value.flags & OP_R16)
