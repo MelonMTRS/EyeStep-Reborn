@@ -15,6 +15,14 @@ namespace EyeStep
 		c_auto
 	};
 
+	struct function_arg
+	{
+		uint32_t ebp_offset;
+		uint8_t bits;
+		uint8_t isCharPointer;
+		uint32_t location;
+	};
+
 	struct function_info
 	{
 		function_info();
@@ -23,9 +31,8 @@ namespace EyeStep
 		uint8_t convention;
 		uint8_t return_bits;
 		uint16_t stack_cleanup;
-		uint16_t max_stack_size;
 		uint32_t function_size;
-		std::vector<uint8_t> arg_bits;
+		std::vector<function_arg> args;
 
 		char psuedocode[256];
 
@@ -79,6 +86,7 @@ namespace EyeStep
 		extern uint8_t getConvention(uint32_t func, size_t n_expected_Args); // method to get calling convention with 100% accuracy
 		extern uint8_t getConvention(uint32_t func); // primary method (heuristic analysis!)
 		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_cdecl);
+		extern std::string getAnalysis(uint32_t func);
 
 		extern std::string generate_sig(uint32_t func, size_t instructions);
 	}
