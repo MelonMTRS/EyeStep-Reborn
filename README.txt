@@ -1,16 +1,16 @@
-# EyeStep-Reborn
-Completely full and compact intel x86 disassembler
-
-
 # About
-This is original and table-based from the resources provided at:
+
+EyeStep is a full and compact intel x86 disassembler, with API for 
+a complete run-time analysis of memory.
+
+It's original and table-based from the resources provided at:
 http://ref.x86asm.net/coder32.html
 
-I ask that you give credit in some way for using this in your projects,
-and at least leave my comments in the code
+It features everything except for SIMD instructions
 
 
 # Usage
+
 To use EyeStep you simply include eyestep.h where needed
 use EyeStep::ReadInstruction(address) to interpret the approximate
 x86 instruction at 'address'.
