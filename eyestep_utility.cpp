@@ -752,6 +752,34 @@ namespace EyeStep
 
 			return new_func;
 		}
+
+
+		// not finished (uniqueness coming soon)
+		std::string generate_sig(uint32_t func, size_t instructions)
+		{
+			std::string signature = "";
+
+			uint32_t at = func;
+			for (int j = 0; j < instructions; j++)
+			{
+				auto i = EyeStep::read(at);
+
+				for (int c = 0; c < i.len; c++)
+				{
+					if (c == 0)
+					{
+						signature += to_str(i.bytes[c]);
+					}
+					else {
+						signature += "??";
+					}
+				}
+
+				at += i.len;
+			}
+
+			return signature;
+		}
 	}
 
 
@@ -770,6 +798,7 @@ namespace EyeStep
 		strcpy(psuedocode, "Unidentified");
 	}
 
+
 	void function_info::analyze(uint32_t func)
 	{
 		uint32_t func_end = func + 16;
@@ -780,84 +809,112 @@ namespace EyeStep
 			func_end += 16;
 		}
 
-		uint8_t uses_ecx = 0;
-		uint8_t uses_edx = 0;
+		uint8_t ecx_set = FALSE;
+		uint8_t edx_set = FALSE;
+
 		auto return_value = EyeStep::operand();
 
 		while (at < func_end)
 		{
 			auto i = EyeStep::read(at);
 
+			auto src = i.source();
+			auto dest = i.destination();
+
 			std::string opcode = "";
 			opcode += i.data;
 
-			printf("%s\n", i.data);
-
-			if (i.source().flags & OP_R32) // does source operand use a 32-bit register?
+			// not set yet
+			if (convention == c_auto)
 			{
-				if (i.destination().flags & OP_R32) // does destination operand use a 32-bit register?
+				// default to the return value
+				if (opcode.find("retn") != std::string::npos)
 				{
-
+					stack_cleanup = 0;
+					convention = c_cdecl;
 				}
-
-				/*if (opcode.find("pop") != std::string::npos)
+				else if (opcode.find("ret ") != std::string::npos)
 				{
-					if (i.source().reg[0] == R32_ECX)
-					{
-						uses_ecx = FALSE;
-					}
-					else if (i.source().reg[0] == R32_EDX) 
-					{
-						uses_edx = FALSE;
+					stack_cleanup = util::readShort(i.address + 1);
+					convention = c_stdcall;
+				}
+			}
+
+			if (src.flags & OP_R32) // does source operand use a 32-bit register?
+			{
+				if (dest.flags & OP_R32) // does destination operand use a 32-bit register?
+				{
+					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
+					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
+					){
+						if (src.reg[0] == R32_EAX)
+						{
+							return_value = dest;
+						}
+
+						/*if (opcode.find("test ") != std::string::npos
+							&& src.reg[0] == R32_EDX
+							&& dest.reg[0] == R32_EDX
+							&& !edx_set
+							) {
+							convention = c_fastcall;
+						}
+						else if (opcode.find("test ") != std::string::npos
+							&& src.reg[0] == R32_ECX
+							&& dest.reg[0] == R32_ECX
+							&& !ecx_set
+							) {
+							convention = c_thiscall;
+						}*/
+					
+						if (src.reg[0] == R32_EDX)
+						{
+							edx_set = TRUE;
+						}
+						else if (src.reg[0] == R32_ECX)
+						{
+							ecx_set = TRUE;
+						}
+						else if (dest.reg[0] == R32_EDX && !edx_set)
+						{
+							convention = c_fastcall;
+						}
+						else if (dest.reg[0] == R32_ECX && !ecx_set)
+						{
+							if (convention != c_fastcall)
+							{
+								convention = c_thiscall;
+							}
+						}
 					}
 				}
-				else 
-				{
-					if (i.source().reg[0] == R32_ECX)
+				else {
+					if (opcode.find("pop ") != std::string::npos)
 					{
-						uses_ecx = TRUE;
-					}
-					else if (i.source().reg[0] == R32_EDX)
+						if (src.reg[0] == R32_ECX)
+						{
+							ecx_set = FALSE;
+						}
+						else if (src.reg[0] == R32_EDX)
+						{
+							edx_set = FALSE;
+						}
+					} else if (opcode.find("push ") != std::string::npos)
 					{
-						uses_edx = TRUE;
+						if (src.reg[0] == R32_ECX)
+						{
+							ecx_set = TRUE;
+						}
+						else if (src.reg[0] == R32_EDX)
+						{
+							edx_set = TRUE;
+						}
 					}
-				}*/
-
-				/*if (i.flags & OP_SRC_DEST)
-				{
-					if (i.source().reg[0] == R32_EAX)
-					{
-						return_value = i.destination();
-					}
-
-					if (strcmp(i.info.opcode_name, "test")
-						&& i.source().reg[0] == R32_EDX
-						&& i.destination().reg[0] == R32_EDX
-						&& !uses_edx
-						) {
-						convention = c_fastcall;
-					}
-					else if (strcmp(i.info.opcode_name, "test")
-						&& i.source().reg[0] == R32_ECX
-						&& i.destination().reg[0] == R32_ECX
-						&& !uses_ecx
-						) {
-						convention = c_thiscall;
-					}
-					else if (i.source().reg[0] == R32_EDX)
-					{
-						uses_edx = TRUE;
-					}
-					else if (i.source().reg[0] == R32_ECX)
-					{
-						uses_ecx = TRUE;
-					}
-				}*/
+				}
 			}
 
 			at += i.len;
 		}
-
 		
 		function_size = func_end - func;
 		start_address = func;
