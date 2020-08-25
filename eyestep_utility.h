@@ -4,6 +4,34 @@
 
 namespace EyeStep
 {
+	extern const char* convs[5];
+
+	enum : uint8_t
+	{
+		c_cdecl,
+		c_stdcall,
+		c_fastcall,
+		c_thiscall,
+		c_auto
+	};
+
+	struct function_info
+	{
+		function_info();
+
+		uint32_t start_address;
+		uint8_t convention;
+		uint8_t return_bits;
+		uint16_t stack_cleanup;
+		uint16_t max_stack_size;
+		uint32_t function_size;
+		std::vector<uint8_t> arg_bits;
+
+		char psuedocode[256];
+
+		void analyze(uint32_t func);
+	};
+
 	namespace util
 	{
 		extern DWORD setMemoryPage(uint32_t address, DWORD protect, size_t size = 0x3FF);
@@ -46,6 +74,12 @@ namespace EyeStep
 
 		extern std::vector<uint32_t> getCalls(uint32_t address);
 		extern std::vector<uint32_t> getPointers(uint32_t address);
+
+		extern function_info analyzeFunction(uint32_t func);
+		extern uint8_t getConvention(uint32_t func, size_t n_expected_Args); // method to get calling convention with 100% accuracy
+		extern uint8_t getConvention(uint32_t func); // primary method (heuristic analysis!)
+		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_cdecl);
+
 	}
 
 	namespace scanner
