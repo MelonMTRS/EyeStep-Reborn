@@ -1503,17 +1503,20 @@ namespace EyeStep
 						{
 							// 
 							strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
+							p.operands[c].flags |= OP_R32;
 						} else 
 						{
 							// we need to check the previous byte in this circumstance
 							if (r2 == 5 && *(at - 1) < 64)
 							{
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r1)]);
+								p.operands[c].flags |= OP_R32;
 							} else 
 							{
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
 								strcat(p.data, "+"); // + SIB Base
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r1)]);
+								p.operands[c].flags |= OP_R32;
 							}
 
 							// SIB Scale
@@ -1608,18 +1611,23 @@ namespace EyeStep
 							break;
 						case OP_TYPES::xmm0:
 							strcat(p.data, "xmm0");
+							p.operands[c].flags |= OP_XMM;
 							break;
 						case OP_TYPES::AL:
 							strcat(p.data, "al");
+							p.operands[c].flags |= OP_R8;
 							break;
 						case OP_TYPES::AH:
 							strcat(p.data, "ah");
+							p.operands[c].flags |= OP_R8;
 							break;
 						case OP_TYPES::AX:
 							strcat(p.data, "ax");
+							p.operands[c].flags |= OP_R16;
 							break;
 						case OP_TYPES::CL:
 							strcat(p.data, "cl");
+							p.operands[c].flags |= OP_R8;
 							break;
 						case OP_TYPES::ES:
 							strcat(p.data, "es");
@@ -1638,43 +1646,56 @@ namespace EyeStep
 							break;
 						case OP_TYPES::EAX:
 							strcat(p.data, "eax");
+							p.operands[c].flags |= OP_R32;
 							break;
 						case OP_TYPES::ECX:
 							strcat(p.data, "ecx");
+							p.operands[c].flags |= OP_R32;
 							break;
 						case OP_TYPES::EBP:
 							strcat(p.data, "ebp");
+							p.operands[c].flags |= OP_R32;
 							break;
 						case OP_TYPES::DRn:
 							strcat(p.data, mnemonics::dr_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_DR;
 							break;
 						case OP_TYPES::CRn:
 							strcat(p.data, mnemonics::cr_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_CR;
 							break;
 						case OP_TYPES::ST:
 							strcat(p.data, mnemonics::st_names[p.operands[c].append_reg(0)]);
+							p.operands[c].flags |= OP_ST;
 							break;
 						case OP_TYPES::Sreg:
 							strcat(p.data, mnemonics::sreg_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_SREG;
 							break;
 						case OP_TYPES::mm:
 							strcat(p.data, mnemonics::mm_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_MM;
 							break;
 						case OP_TYPES::xmm:
 							strcat(p.data, mnemonics::xmm_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_XMM;
 							break;
 						case OP_TYPES::r8:
 							strcat(p.data, mnemonics::r8_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_R8;
 							break;
 						case OP_TYPES::r16:
 							strcat(p.data, mnemonics::r16_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_R16;
 							break;
 						case OP_TYPES::r16_32: 
 						case OP_TYPES::r32:
 							strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_R32;
 							break;
 						case OP_TYPES::r64:
 							strcat(p.data, mnemonics::r64_names[p.operands[c].append_reg(r)]);
+							p.operands[c].flags |= OP_R64;
 							break;
 						case OP_TYPES::m8: 
 						case OP_TYPES::m16: 
@@ -1734,32 +1755,40 @@ namespace EyeStep
 									case OP_TYPES::r_m8:
 									case OP_TYPES::m8:
 										strcat(p.data, mnemonics::r8_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_R8;
 										break;
 									case OP_TYPES::r_m16:
 									case OP_TYPES::m16:
 										strcat(p.data, mnemonics::r16_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_R16;
 										break;
 									case OP_TYPES::mm_m64:
 										strcat(p.data, mnemonics::mm_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_MM;
 										break;
 									case OP_TYPES::xmm_m32:
 									case OP_TYPES::xmm_m64:
 									case OP_TYPES::xmm_m128:
 									case OP_TYPES::m128:
 										strcat(p.data, mnemonics::xmm_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_XMM;
 										break;
 									case OP_TYPES::ST:
 									case OP_TYPES::STi:
 										strcat(p.data, mnemonics::st_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_ST;
 										break;
 									case OP_TYPES::CRn:
 										strcat(p.data, mnemonics::cr_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_CR;
 										break;
 									case OP_TYPES::DRn:
 										strcat(p.data, mnemonics::dr_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_DR;
 										break;
 									default: // Anything else is going to be 32-bit
 										strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+										p.operands[c].flags |= OP_R32;
 									break;
 								}
 								break;
@@ -1780,6 +1809,7 @@ namespace EyeStep
 									break;
 								default:
 									strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+									p.operands[c].flags |= OP_R32;
 									break;
 								}
 
@@ -1793,6 +1823,7 @@ namespace EyeStep
 									get_sib(sizeof(uint8_t)); // Translate SIB byte (with BYTE offset)
 								else {
 									strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+									p.operands[c].flags |= OP_R32;
 									get_imm8(at + 1, false);
 								}
 
@@ -1805,6 +1836,7 @@ namespace EyeStep
 									get_sib(sizeof(uint32_t)); // Translate SIB byte (with DWORD offset)
 								else {
 									strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+									p.operands[c].flags |= OP_R32;
 									get_imm32(at + 1, false);
 								}
 
