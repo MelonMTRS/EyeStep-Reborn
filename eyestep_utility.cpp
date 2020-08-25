@@ -18,9 +18,15 @@ namespace EyeStep
 
 		DWORD setMemoryPage(uint32_t address, DWORD protect, size_t size)
 		{
-			DWORD oldProtect;
-			VirtualProtect(reinterpret_cast<void*>(address), size, protect, &oldProtect);
-			return oldProtect;
+			DWORD old_protect;
+			if (external_mode)
+			{
+				VirtualProtectEx(current_proc, reinterpret_cast<void*>(address), size, protect, &old_protect);
+			}
+			else {
+				VirtualProtect(reinterpret_cast<void*>(address), size, protect, &old_protect);
+			}
+			return old_protect;
 		}
 
 
@@ -185,10 +191,57 @@ namespace EyeStep
 			return *reinterpret_cast<double*>(bytes);
 		}
 
-
 		void freeBytes(uint8_t* bytes)
 		{
 			delete[] bytes;
+		}
+
+		void placeJmp(uint32_t from, uint32_t to)
+		{
+			uint32_t hook_size = 0;
+			while (hook_size < 5)
+			{
+				hook_size += EyeStep::read(from + hook_size).len;
+			}
+
+			DWORD old_protect = setMemoryPage(from, PAGE_EXECUTE_READWRITE);
+
+			writeByte(from, 0xE9);
+			writeInt(from + 1, (to - from) - 5);
+
+			for (int i = 5; i < hook_size; i++)
+			{
+				writeByte(from + i, 0x90);
+			}
+
+			setMemoryPage(from, old_protect);
+		}
+
+		void placeCall(uint32_t from, uint32_t to)
+		{
+			uint32_t hook_size = 0;
+			while (hook_size < 5)
+			{
+				hook_size += EyeStep::read(from + hook_size).len;
+			}
+
+			DWORD old_protect = setMemoryPage(from, PAGE_EXECUTE_READWRITE);
+
+			writeByte(from, 0xE8);
+			writeInt(from + 1, (to - from) - 5);
+
+			for (int i = 5; i < hook_size; i++)
+			{
+				writeByte(from + i, 0x90);
+			}
+
+			setMemoryPage(from, old_protect);
+		}
+
+		void placeTrampoline(uint32_t from, uint32_t to, size_t length)
+		{
+			placeJmp(from, to);
+			placeJmp(to + length, from + 5);
 		}
 
 		uint32_t rebase(uint32_t address)
@@ -789,6 +842,130 @@ namespace EyeStep
 			analysis += info.psuedocode;
 			return analysis;
 		}
+
+		std::vector<uint32_t> debugAddress(uint32_t address, uint8_t r32, uint32_t offset, size_t count)
+		{
+			auto results = std::vector<uint32_t>();
+
+			uint32_t new_func = NULL;
+			uint32_t vars = NULL;
+			uint32_t signal = NULL;
+			uint8_t* old_bytes;
+			size_t hook_size = 0;
+
+			// Figure out the instructions that may be overwritten
+			while (hook_size < 5)
+			{
+				hook_size += EyeStep::read(address + hook_size).len;
+			}
+
+			old_bytes = readBytes(address, hook_size);
+
+			// Allocate memory internally or remotely
+			if (external_mode)
+				new_func = reinterpret_cast<uint32_t>(VirtualAllocEx(current_proc, nullptr, 256, MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+			else
+				new_func = reinterpret_cast<uint32_t>(VirtualAlloc(nullptr, 256, MEM_COMMIT, PAGE_EXECUTE_READWRITE));
+
+
+			// Places we can store values -- "variables"
+			vars = new_func + 128;
+			signal = new_func + 124;
+
+			uint8_t data[128];
+			uint8_t* at = data;
+
+			//
+			// Begin writing ASM to the function
+			// 
+
+			for (int i = 0; i < hook_size; i++)
+			{
+				// Place the original bytes first (any that were overwritten)
+				*at++ = old_bytes[i];
+			}
+
+			*at++ = 0x60; // pushad
+			*at++ = 0x50; // push eax
+			
+			for (size_t i = 0; i < count; i++)
+			{
+				*at++ = 0x8B; // mov
+
+				if (offset + (count * 4) < 0x80)
+				{
+					// Byte-sized offset
+					*at++ = 0x40 + r32; //  eax,[r32 + ??]
+					*at++ = offset + (i * 4);
+				}
+				else { 
+					// DWORD-sized offset
+					*at++ = 0x80 + r32; // eax,[r32 + ????????]
+					*reinterpret_cast<uint32_t*>(at) = offset + (i * 4);
+					at += sizeof(uint32_t);
+				}
+
+				*at++ = 0xA3; // mov [vars + x], eax
+				*reinterpret_cast<uint32_t*>(at) = vars + (i * 4);
+				at += sizeof(uint32_t);
+			}
+
+			// update the signal location, meaning
+			// the debug is finished
+			*at++ = 0xC7; // mov [signal],00000001
+			*at++ = 0x05;
+			*reinterpret_cast<uint32_t*>(at) = signal;
+			at += sizeof(uint32_t);
+			*reinterpret_cast<uint32_t*>(at) = 0x00000001;
+			at += sizeof(uint32_t);
+
+			*at++ = 0x58; // pop eax
+			*at++ = 0x61; // popad
+
+			//
+			// Function is finished, let's trampoline to it and back
+			// 
+
+			writeBytes(new_func, data, at - data);
+			placeTrampoline(address, new_func, at - data);
+
+			printf("%08X\n", address);
+			printf("%08X\n", new_func);
+
+			//
+			// Wait for the hook to be executed, and 
+			// our signal value to be set to 1 (anything non-null)
+			//
+
+			while (readInt(signal) == NULL)
+			{
+				Sleep(10);
+			}
+
+			//
+			// Dump the register offsets/values into our table
+			//
+			for (int i = 0; i < count; i++)
+			{
+				results.push_back(readInt(vars + i * 4));
+			}
+
+			// Restore protection
+			DWORD old_protect = setMemoryPage(address, PAGE_EXECUTE_READWRITE);
+			writeBytes(address, old_bytes, hook_size);
+			setMemoryPage(address, old_protect);
+
+			delete[] old_bytes;
+
+			// Clean up in either mode
+			if (external_mode)
+				VirtualFreeEx(current_proc, reinterpret_cast<void*>(new_func), NULL, MEM_RELEASE);
+			else
+				VirtualFree(reinterpret_cast<void*>(new_func), NULL, MEM_RELEASE);
+
+			return results;
+		}
+
 	}
 
 
