@@ -1023,16 +1023,20 @@ namespace EyeStep
 		// adjust args...check for args that are used
 		// with a compiled `strlen` and change them to
 		// a const char* arg.
-		for (int i = args.size() - 1; i >= 0; i--)
+		// as of now, it onlys support one const char*
+		// arg lol so find the arg closest to a strlen
+		if (strlen_at)
 		{
-			if (args[i].location < strlen_at)
+			for (int i = args.size() - 1; i >= 0; i--)
 			{
-				args.erase(args.begin() + i, args.end());
-				args.insert(args.begin() + i, { 0, 32, true, strlen_at });
-				break;
+				if (args[i].location < strlen_at)
+				{
+					args.erase(args.begin() + i, args.end());
+					args.insert(args.begin() + i, { 0, 32, true, strlen_at });
+					break;
+				}
 			}
 		}
-
 
 		// Start writing to the psuedocode
 		// (we can start with the return value)
@@ -1062,9 +1066,8 @@ namespace EyeStep
 
 		for (int i = 0; i < args.size(); i++)
 		{
-			char c[2];
-			c[0] = 0x30 + i;
-			c[1] = '\0';
+			char c[4];
+			sprintf(c, "%i", i + 1);
 
 			if (args[i].isCharPointer)
 			{
