@@ -787,63 +787,6 @@ namespace EyeStep
 
 			printf("%s\n", i.data);
 
-			if (i.source().flags & OP_R32)
-			{
-				/*if (opcode.find("pop") != std::string::npos)
-				{
-					if (i.source().reg[0] == R32_ECX)
-					{
-						uses_ecx = FALSE;
-					}
-					else if (i.source().reg[0] == R32_EDX) 
-					{
-						uses_edx = FALSE;
-					}
-				}
-				else 
-				{
-					if (i.source().reg[0] == R32_ECX)
-					{
-						uses_ecx = TRUE;
-					}
-					else if (i.source().reg[0] == R32_EDX)
-					{
-						uses_edx = TRUE;
-					}
-				}*/
-
-				/*if (i.flags & OP_SRC_DEST)
-				{
-					if (i.source().reg[0] == R32_EAX)
-					{
-						return_value = i.destination();
-					}
-
-					if (strcmp(i.info.opcode_name, "test")
-						&& i.source().reg[0] == R32_EDX
-						&& i.destination().reg[0] == R32_EDX
-						&& !uses_edx
-						) {
-						convention = c_fastcall;
-					}
-					else if (strcmp(i.info.opcode_name, "test")
-						&& i.source().reg[0] == R32_ECX
-						&& i.destination().reg[0] == R32_ECX
-						&& !uses_ecx
-						) {
-						convention = c_thiscall;
-					}
-					else if (i.source().reg[0] == R32_EDX)
-					{
-						uses_edx = TRUE;
-					}
-					else if (i.source().reg[0] == R32_ECX)
-					{
-						uses_ecx = TRUE;
-					}
-				}*/
-			}
-
 			at += i.len;
 		}
 
