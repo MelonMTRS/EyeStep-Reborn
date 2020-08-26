@@ -73,7 +73,9 @@ namespace EyeStep
 		extern bool isEpilogue(uint32_t address);
 		extern bool isValidCode(uint32_t address);
 		extern uint32_t getRel(uint32_t address);
-		extern uint32_t getPrologue(uint32_t address);
+		extern uint16_t getRetn(uint32_t func);
+		extern uint32_t getPrologue(uint32_t func);
+		extern uint32_t getEpilogue(uint32_t func);
 		extern uint32_t nextPrologue(uint32_t address);
 		extern uint32_t nextCall(uint32_t address, bool location = false, bool prologue = false);
 		extern uint32_t prevCall(uint32_t address, bool location = false, bool prologue = false);
@@ -87,8 +89,9 @@ namespace EyeStep
 
 		extern uint8_t getConvention(uint32_t func, size_t n_expected_args); // method to grab calling conventions with 100% accuracy
 		extern uint8_t getConvention(uint32_t func); // primary 'guessing' method
-		extern uint32_t createRoutine(uint32_t func, uint8_t n_args, uint8_t convention = c_auto);
+		extern uint32_t createRoutine(uint32_t func, uint8_t n_args);
 		extern std::string getAnalysis(uint32_t func);
+		extern void disableFunction(uint32_t func);
 
 		extern std::vector<uint32_t> debug_r32(uint32_t address, uint8_t r32, uint32_t start_offset, size_t count = 1);
 		extern std::string generate_sig(uint32_t func, size_t instructions);
@@ -132,12 +135,12 @@ namespace EyeStep
 			int_notequal
 		};
 
-        struct scan_check
-        {
-            int type;
-            int offset;
+		struct scan_check
+		{
+			int type;
+			int offset;
 			void* value;
-        };
+		};
 
 		extern bool compare_bytes(const uint8_t* location, const uint8_t* aob, const char* mask);
 		extern scan_results scan(const char* aob, bool code = true, int align = 1, int endresult = 0, std::vector<scan_check>checks = std::vector<scan_check>());
