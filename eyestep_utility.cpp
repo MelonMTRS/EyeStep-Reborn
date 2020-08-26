@@ -1111,12 +1111,12 @@ namespace EyeStep
 			}
 
 			// does the source operand use a register?
-			if (src.flags & OP_R32 || src.flags & OP_R16 || src.flags & OP_R8)
+			if (src.reg.size())
 			{
 				// mov [ebp+08], ???
 				// mov [ebp+0C], ???
 				// . . .
-				if (src.reg[0] == R32_EBP && src.imm8 >= 8 && src.imm8 < 0x40)
+				if (src.flags & OP_R32 && src.reg[0] == R32_EBP && src.imm8 >= 8 && src.imm8 < 0x40)
 				{
 					uint8_t found = FALSE;
 
@@ -1133,12 +1133,12 @@ namespace EyeStep
 				}
 
 				// does the destination operand use a register?
-				if (dest.flags & OP_R32 || dest.flags & OP_R16 || dest.flags & OP_R8)
+				if (dest.reg.size())
 				{
 					// mov ???, [ebp+08]
 					// mov ???, [ebp+0C]
 					// . . .
-					if (dest.reg[0] == R32_EBP && dest.imm8 >= 8 && dest.imm8 < 0x40)
+					if (dest.flags & OP_R32 && dest.reg[0] == R32_EBP && dest.imm8 >= 8 && dest.imm8 < 0x40)
 					{
 						uint8_t found = FALSE;
 
@@ -1155,48 +1155,9 @@ namespace EyeStep
 					}
 
 					// instruction does not use ecx or edx in both operands.
-					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
-						&& !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
-						) {
-						// Figure out what the very last thing is
-						// that gets placed into EAX ( the return value )
-
-						// mov eax, ???
-						// or eax, ???
-						if (src.reg[0] == R32_EAX)
-						{
-							if (opcode.find("mov ") != std::string::npos
-								|| opcode.find("or ") != std::string::npos
-								) {
-								return_value = dest;
-							}
-						}
-
-						if (src.reg[0] == R32_EDX)
-						{
-							edx_set = TRUE;
-						}
-						else if (src.reg[0] == R32_ECX)
-						{
-							ecx_set = TRUE;
-						}
-						// EDX was used in the destination operand, before
-						// it was allocated. It must be a fastcall.
-						else if (dest.reg[0] == R32_EDX && !edx_set)
-						{
-							convention = c_fastcall;
-						}
-						// ECX was used in the destination operand, before
-						// it was allocated. It must be a thiscall.
-						else if (dest.reg[0] == R32_ECX && !ecx_set)
-						{
-							if (convention != c_fastcall)
-							{
-								convention = c_thiscall;
-							}
-						}
-					}
-					else {
+					if ((src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
+					 || (src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
+					){
 						// an instruction was used with `ecx,ecx`
 						// or `edx,edx`.
 						// We may have to do something about this here...
@@ -1216,6 +1177,45 @@ namespace EyeStep
 							convention = c_thiscall;
 						}
 						*/
+					}
+					else 
+					{
+						// Figure out what the very last thing is
+						// that gets placed into EAX ( the return value )
+						// mov eax, ???
+						// or eax, ???
+						if (src.reg[0] == R32_EAX)
+						{
+							if (opcode.find("mov ") != std::string::npos
+							 || opcode.find("or ") != std::string::npos
+								) {
+								return_value = dest;
+							}
+						}
+
+						if (src.reg[0] == R32_ECX)
+						{
+							ecx_set = TRUE;
+						}
+						else if (src.reg[0] == R32_EDX)
+						{
+							edx_set = TRUE;
+						}
+						// EDX was used in the destination operand, before
+						// it was allocated. It must be a fastcall.
+						else if (dest.reg[0] == R32_EDX && !edx_set)
+						{
+							convention = c_fastcall;
+						}
+						// ECX was used in the destination operand, before
+						// it was allocated. It must be a thiscall.
+						else if (dest.reg[0] == R32_ECX && !ecx_set)
+						{
+							if (convention != c_fastcall)
+							{
+								convention = c_thiscall;
+							}
+						}
 					}
 				}
 				else {
@@ -1297,6 +1297,16 @@ namespace EyeStep
 		}
 		else if (return_value.flags & OP_DISP32 || return_value.flags & OP_R32)
 		{
+			strcat(psuedocode, "int ");
+			return_bits = sizeof(uint32_t);
+		}
+		else {
+			// To-do... Analyse when ESP is altered
+			// with push and pop,
+			// add esp and sub esp.
+			// The left over amount (if it's 4 bytes)
+			// will tell us whether the function returns an
+			// int or not.
 			strcat(psuedocode, "int ");
 			return_bits = sizeof(uint32_t);
 		}
