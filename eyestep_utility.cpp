@@ -888,7 +888,8 @@ namespace EyeStep
 				{
 					writeByte(func + 3, 0xC2);
 					writeShort(func + 4, ret);
-				} else 
+				}
+				else
 				{
 					writeByte(func + 3, 0xC3);
 				}
@@ -1042,7 +1043,8 @@ namespace EyeStep
 		if (util::readByte(func_end) == 0xC3)
 		{
 			func_end += 1;
-		} else {
+		}
+		else {
 			func_end += 3;
 		}
 
@@ -1109,12 +1111,12 @@ namespace EyeStep
 			}
 
 			// does the source operand use a register?
-			if (src.flags & OP_R32 || src.flags & OP_R16  || src.flags & OP_R8)
+			if (src.flags & OP_R32 || src.flags & OP_R16 || src.flags & OP_R8)
 			{
 				// mov [ebp+08], ???
 				// mov [ebp+0C], ???
 				// . . .
-				if (src.reg[0] == R32_EBP && src.imm8 >= 8 && src.imm8 < 0x80)
+				if (src.reg[0] == R32_EBP && src.imm8 >= 8 && src.imm8 < 0x40)
 				{
 					uint8_t found = FALSE;
 
@@ -1136,7 +1138,7 @@ namespace EyeStep
 					// mov ???, [ebp+08]
 					// mov ???, [ebp+0C]
 					// . . .
-					if (dest.reg[0] == R32_EBP && dest.imm8 >= 8 && dest.imm8 < 0x80)
+					if (dest.reg[0] == R32_EBP && dest.imm8 >= 8 && dest.imm8 < 0x40)
 					{
 						uint8_t found = FALSE;
 
@@ -1155,7 +1157,7 @@ namespace EyeStep
 					// instruction does not use ecx or edx in both operands.
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
 					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
-						) {
+					){
 						// Figure out what the very last thing is
 						// that gets placed into EAX ( the return value )
 
@@ -1273,8 +1275,7 @@ namespace EyeStep
 				{
 					if (args[i].location < r)
 					{
-						args.erase(args.begin() + i, args.end());
-						args.insert(args.begin() + i, { 0, 32, true, r });
+						args[i].isCharPointer = true;
 						break;
 					}
 				}
