@@ -1249,56 +1249,70 @@ namespace EyeStep
 
 		uint8_t* at = p.bytes;
 
-		// identify the instruction prefixes
-		switch (*at)
-		{
-		case OP_SEG_CS:
-			at++, p.flags |= PRE_SEG_CS;
-			break;
-		case OP_SEG_SS:
-			at++, p.flags |= PRE_SEG_SS;
-			break;
-		case OP_SEG_DS:
-			at++, p.flags |= PRE_SEG_DS;
-			break;
-		case OP_SEG_ES:
-			at++, p.flags |= PRE_SEG_ES;
-			break;
-		case OP_SEG_FS:
-			at++, p.flags |= PRE_SEG_FS;
-			break;
-		case OP_SEG_GS:
-			at++, p.flags |= PRE_SEG_GS;
-			break;
-		case OP_66:
-			p.flags |= PRE_66;
-			break;
-		case OP_67:
-			p.flags |= PRE_67;
-			break;
-		case OP_LOCK:
-			at++, p.flags |= PRE_LOCK;
-			strcat(p.data, "lock ");
-			break;
-		case OP_REPNE:
-			at++, p.flags |= PRE_REPNE;
-			strcat(p.data, "repne ");
-			break;
-		case OP_REPE:
-			at++, p.flags |= PRE_REPE;
-			strcat(p.data, "repe ");
-			break;
-		}
-
 		// store the original
 		uint8_t* prev_at = at;
 
 		for (OP_INFO op_info : OP_TABLE)
 		{
+			p.flags = 0;
+
 			// Reset each time we check
 			at = prev_at;
 
+
 			uint8_t opcode_byte = to_byte(op_info.code, 0);
+			uint8_t show_prefix = FALSE;
+
+			// identify the instruction prefixes
+			switch (*at)
+			{
+			case OP_SEG_CS:
+				*at++, p.flags |= PRE_SEG_CS;
+				break;
+			case OP_SEG_SS:
+				*at++, p.flags |= PRE_SEG_SS;
+				break;
+			case OP_SEG_DS:
+				*at++, p.flags |= PRE_SEG_DS;
+				break;
+			case OP_SEG_ES:
+				*at++, p.flags |= PRE_SEG_ES;
+				break;
+			case OP_SEG_FS:
+				*at++, p.flags |= PRE_SEG_FS;
+				break;
+			case OP_SEG_GS:
+				*at++, p.flags |= PRE_SEG_GS;
+				break;
+			case OP_66:
+				p.flags |= PRE_66;
+				break;
+			case OP_67:
+				p.flags |= PRE_67;
+				break;
+			case OP_LOCK:
+				p.flags |= PRE_LOCK;
+				if (opcode_byte != OP_LOCK)
+				{
+					show_prefix = TRUE;
+				}
+				break;
+			case OP_REPNE:
+				p.flags |= PRE_REPNE;
+				if (opcode_byte != OP_REPNE)
+				{
+					show_prefix = TRUE;
+				}
+				break;
+			case OP_REPE:
+				p.flags |= PRE_REPE;
+				if (opcode_byte != OP_REPE)
+				{
+					show_prefix = TRUE;
+				}
+				break;
+			}
+
 			uint8_t opcode_match = (*at == opcode_byte);
 			uint8_t reg_from_opcode_byte = FALSE;
 
@@ -1348,6 +1362,8 @@ namespace EyeStep
 
 							opcode_byte = to_byte(op_info.code, i + 1);
 							opcode_match = (*at == opcode_byte);
+
+
 						}
 					}
 				}
@@ -1361,6 +1377,22 @@ namespace EyeStep
 			{
 				// move onto the next byte
 				at++;
+
+				if (show_prefix)
+				{
+					switch (p.flags)
+					{
+					case PRE_LOCK:
+						strcpy(p.data, "lock ");
+						break;
+					case PRE_REPNE:
+						strcpy(p.data, "repne ");
+						break;
+					case PRE_REPE:
+						strcpy(p.data, "repe ");
+						break;
+					}
+				}
 
 				strcat(p.data, op_info.opcode_name);
 				strcat(p.data, " ");
