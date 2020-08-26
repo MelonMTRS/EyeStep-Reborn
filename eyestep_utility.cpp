@@ -1412,6 +1412,8 @@ namespace EyeStep
 		{
 			auto results = std::vector<uint32_t>();
 
+			MEMORY_BASIC_INFORMATION mbi = { 0 };
+
 			size_t scan_size = 0;
 			DWORD bytes_read;
 			uint8_t* bytes = nullptr;
@@ -1480,12 +1482,8 @@ namespace EyeStep
 				end = reinterpret_cast<uint32_t>(base_module) + base_module_size;
 			}
 
-			printf("Scanning\n");
-
 			while (start < end)
 			{
-				MEMORY_BASIC_INFORMATION mbi = { 0 };
-
 				if (!external_mode)
 				{
 					VirtualQuery(reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
@@ -1499,19 +1497,7 @@ namespace EyeStep
 					// Make sure the memory is committed, matches our protection, and isn't PAGE_GUARD.
 					if ((mbi.State & MEM_COMMIT) && !(mbi.Protect & PAGE_NOACCESS) && !(mbi.Protect & PAGE_NOCACHE) && !(mbi.Protect & PAGE_GUARD))
 					{
-						bytes = new uint8_t[mbi.RegionSize];
-
-						if (!external_mode)
-						{
-							memcpy(bytes, reinterpret_cast<void*>(start), mbi.RegionSize);
-						}
-						else {
-							if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(start), bytes, mbi.RegionSize, &bytes_read) == 0)
-							{
-								start += mbi.RegionSize;
-								continue;
-							}
-						}
+						bytes = util::readBytes(start, mbi.RegionSize);
 
 						// Scan all the memory in the region.
 						for (size_t i = 0; i < mbi.RegionSize; i += align)
