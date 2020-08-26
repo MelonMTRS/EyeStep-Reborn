@@ -1156,7 +1156,7 @@ namespace EyeStep
 
 					// instruction does not use ecx or edx in both operands.
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
-					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
+						&& !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
 						) {
 						// Figure out what the very last thing is
 						// that gets placed into EAX ( the return value )
@@ -1411,7 +1411,7 @@ namespace EyeStep
 		// 
 		scan_results scan(const char* aob, bool code, int align, int endresult, std::vector<scan_check>checks)
 		{
-			auto results = std::vector<uint32_t>();
+			auto results = scan_results();
 
 			MEMORY_BASIC_INFORMATION mbi = { 0 };
 
@@ -1616,9 +1616,47 @@ namespace EyeStep
 			}
 		}
 
-		scan_results scan_xrefs(uint32_t result)
+		scan_results scan_xrefs(uint32_t func)
 		{
-			return scan(ptrstring(result).c_str());
+			auto results = scan_results();
+
+			MEMORY_BASIC_INFORMATION mbi = { 0 };
+
+			uint32_t start = reinterpret_cast<uint32_t>(base_module);
+			uint32_t end = reinterpret_cast<uint32_t>(base_module) + base_module_size;
+
+			while (start < end)
+			{
+				if (!external_mode)
+				{
+					VirtualQuery(reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
+				}
+				else {
+					VirtualQueryEx(current_proc, reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
+				}
+
+				if (mbi.Protect == PAGE_EXECUTE_READ)
+				{
+					uint8_t* bytes = util::readBytes(start, mbi.RegionSize);
+
+					for (size_t at = 0; at < mbi.RegionSize; at++)
+					{
+						if (bytes[at] == 0xE8 || bytes[at] == 0xE9)
+						{
+							if (util::getRel(start + at) == func)
+							{
+								results.push_back(start + at);
+							}
+						}
+					}
+
+					delete[] bytes;
+				}
+
+				start += mbi.RegionSize;
+			}
+
+			return results;
 		}
 	}
 }
