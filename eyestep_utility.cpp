@@ -36,7 +36,7 @@ namespace EyeStep
 		{
 			if (!external_mode)
 				*reinterpret_cast<uint8_t*>(address) = value;
-			else 
+			else
 			{
 				uint8_t bytes[sizeof(value)];
 				bytes[0] = value;
@@ -270,34 +270,34 @@ namespace EyeStep
 		{
 			return (
 				isRel(address)
-			 && getRel(address) > reinterpret_cast<uint32_t>(base_module)
-			 && getRel(address) < reinterpret_cast<uint32_t>(base_module) + base_module_size
-			);
+				&& getRel(address) > reinterpret_cast<uint32_t>(base_module)
+				&& getRel(address) < reinterpret_cast<uint32_t>(base_module) + base_module_size
+				);
 		}
 
 		bool isPrologue(uint32_t address)
 		{
 			return (
 				// Ensure that it's aligned (helps to filter it immensely)
-				(address % 16 == 0) 
-			 &&
+				(address % 16 == 0)
+				&&
 				// Check for 3 different prologues, each with different registers
 				((readByte(address) == 0x55 && readShort(address + 1) == 0xEC8B)
-			  || (readByte(address) == 0x53 && readShort(address + 1) == 0xDC8B)
-			  || (readByte(address) == 0x56 && readShort(address + 1) == 0xF48B))
-			);
+					|| (readByte(address) == 0x53 && readShort(address + 1) == 0xDC8B)
+					|| (readByte(address) == 0x56 && readShort(address + 1) == 0xF48B))
+				);
 		}
 
 		bool isEpilogue(uint32_t address)
 		{
 			return (
 				(readShort(address - 1) == 0xC35D)
-			 ||
+				||
 				(readShort(address - 1) == 0xC25D
-			 &&  readShort(address + 1) >= 0
-			 &&  readShort(address + 1) % 4 == 0
-				)
-			);
+					&& readShort(address + 1) >= 0
+					&& readShort(address + 1) % 4 == 0
+					)
+				);
 		}
 
 		// determines whether the address is
@@ -360,6 +360,31 @@ namespace EyeStep
 			return (isPrologue(address)) ? address : prevPrologue(address);
 		}
 
+		uint32_t getEpilogue(uint32_t address)
+		{
+			uint32_t epilogue = util::nextPrologue(address);
+
+			// Get the return of this function
+			while (!util::isEpilogue(epilogue))
+			{
+				epilogue--;
+			}
+
+			return epilogue;
+		}
+
+		uint16_t getRetn(uint32_t address)
+		{
+			uint32_t epilogue = getEpilogue(address);
+
+			if (util::readByte(epilogue) == 0xC2)
+			{
+				return readShort(epilogue + 1);
+			}
+
+			return 0;
+		}
+
 		uint32_t nextCall(uint32_t address, bool location, bool prologue)
 		{
 			uint32_t at = address;
@@ -373,11 +398,11 @@ namespace EyeStep
 			{
 				if ((
 					readByte(at) == 0xE8
-				 || readByte(at) == 0xE9
+					|| readByte(at) == 0xE9
 					)
-				 &&
+					&&
 					isCall(at)
-				){
+					) {
 					bool has_prologue = true;
 
 					// check if we need to get the prologue
@@ -392,7 +417,7 @@ namespace EyeStep
 						{
 							return at;
 						}
-						else 
+						else
 						{
 							return getRel(at);
 						}
@@ -417,11 +442,11 @@ namespace EyeStep
 			{
 				if ((
 					readByte(at) == 0xE8
-				 || readByte(at) == 0xE9
+					|| readByte(at) == 0xE9
 					)
-				 && 
+					&&
 					isCall(at)
-				){
+					) {
 					bool has_prologue = true;
 
 					// check if we need to get the prologue
@@ -456,11 +481,11 @@ namespace EyeStep
 			{
 				if ((
 					readByte(at) == 0xE8
-				 || readByte(at) == 0xE9
+					|| readByte(at) == 0xE9
 					)
-				&& 
+					&&
 					getRel(at) == func_search
-				){
+					) {
 					break;
 				}
 
@@ -478,11 +503,11 @@ namespace EyeStep
 			{
 				if ((
 					readByte(at) == 0xE8
-				 || readByte(at) == 0xE9
+					|| readByte(at) == 0xE9
 					)
-				&& 
+					&&
 					getRel(at) == func_search
-				){
+					) {
 					break;
 				}
 
@@ -534,12 +559,12 @@ namespace EyeStep
 			while (at < func_end)
 			{
 				if ((
-					readByte(at) == 0xE8 
-				 || readByte(at) == 0xE9
+					readByte(at) == 0xE8
+					|| readByte(at) == 0xE9
 					)
-				&& 
+					&&
 					isPrologue(getRel(at))
-				){
+					) {
 					calls.push_back(getRel(at));
 					at += 5;
 					continue;
@@ -853,6 +878,27 @@ namespace EyeStep
 			return analysis;
 		}
 
+		void disableFunction(uint32_t func)
+		{
+			DWORD old_protect = setMemoryPage(func, PAGE_EXECUTE_READWRITE);
+			if (isPrologue(func))
+			{
+				uint16_t ret = getRetn(func);
+				if (ret != 0)
+				{
+					writeByte(func + 3, 0xC2);
+					writeShort(func + 4, ret);
+				} else 
+				{
+					writeByte(func + 3, 0xC3);
+				}
+			}
+			else {
+				writeByte(func, 0xC3);
+			}
+			setMemoryPage(func, old_protect);
+		}
+
 		std::vector<uint32_t> debug_r32(uint32_t address, uint8_t r32, uint32_t offset, size_t count)
 		{
 			auto results = std::vector<uint32_t>();
@@ -897,7 +943,7 @@ namespace EyeStep
 
 			*at++ = 0x60; // pushad
 			*at++ = 0x50; // push eax
-			
+
 			for (size_t i = 0; i < count; i++)
 			{
 				*at++ = 0x8B; // mov
@@ -908,7 +954,7 @@ namespace EyeStep
 					*at++ = 0x40 + r32; //  eax,[r32 + ??]
 					*at++ = offset + (i * 4);
 				}
-				else { 
+				else {
 					// DWORD-sized offset
 					*at++ = 0x80 + r32; // eax,[r32 + ????????]
 					*reinterpret_cast<uint32_t*>(at) = offset + (i * 4);
@@ -991,22 +1037,17 @@ namespace EyeStep
 
 	void function_info::analyze(uint32_t func)
 	{
-		start_address = func;
-		uint32_t func_end = util::nextPrologue(start_address);
-
-		// Get the return of this function
-		while (!util::isEpilogue(func_end))
-		{
-			func_end--;
-		}
+		uint32_t func_end = util::getEpilogue(func);
 
 		if (util::readByte(func_end) == 0xC3)
+		{
 			func_end += 1;
-		else {
+		} else {
 			func_end += 3;
 		}
 
 		// this is the absolute function size
+		start_address = func;
 		function_size = func_end - func;
 
 
@@ -1015,17 +1056,17 @@ namespace EyeStep
 		// simply by AOB-scan or checking the bytes.
 		// This is used to identify const char* args.
 		auto inlined_strlen = std::vector<uint32_t>();
-		
+
 		for (int i = 0; i < function_size; i++)
 		{
 			uint8_t* bytes_strlen = util::readBytes(start_address + i, 8);
 
 			if (bytes_strlen[0] == 0x8A // mov al,[???]
-			 && bytes_strlen[2] >= 0x40 && bytes_strlen[2] < 0x48 // inc ???
-			 && bytes_strlen[3] == 0x84 && bytes_strlen[4] == 0xC0 // test al,al
-			 && bytes_strlen[5] == 0x75 // jnz
-			){
-				inlined_strlen.push_back( start_address + i );
+				&& bytes_strlen[2] >= 0x40 && bytes_strlen[2] < 0x48 // inc ???
+				&& bytes_strlen[3] == 0x84 && bytes_strlen[4] == 0xC0 // test al,al
+				&& bytes_strlen[5] == 0x75 // jnz
+				) {
+				inlined_strlen.push_back(start_address + i);
 				i += 8;
 			}
 
@@ -1069,7 +1110,7 @@ namespace EyeStep
 			}
 
 			// does the source operand use a register?
-			if (src.flags & OP_R32) 
+			if (src.flags & OP_R32)
 			{
 				// mov [ebp+08], ???
 				// mov [ebp+0C], ???
@@ -1091,7 +1132,7 @@ namespace EyeStep
 				}
 
 				// does the destination operand use a register?
-				if (dest.flags & OP_R32) 
+				if (dest.flags & OP_R32)
 				{
 					// mov ???, [ebp+08]
 					// mov ???, [ebp+0C]
@@ -1114,8 +1155,8 @@ namespace EyeStep
 
 					// instruction does not use ecx or edx in both operands.
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
-					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
-					){
+						&& !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
+						) {
 						// Figure out what the very last thing is
 						// that gets placed into EAX ( the return value )
 
@@ -1124,8 +1165,8 @@ namespace EyeStep
 						if (src.reg[0] == R32_EAX)
 						{
 							if (opcode.find("mov ") != std::string::npos
-							 || opcode.find("or ") != std::string::npos
-							){
+								|| opcode.find("or ") != std::string::npos
+								) {
 								return_value = dest;
 							}
 						}
@@ -1144,7 +1185,7 @@ namespace EyeStep
 							) {
 							convention = c_thiscall;
 						}*/
-						
+
 						if (src.reg[0] == R32_EDX)
 						{
 							edx_set = TRUE;
@@ -1188,8 +1229,9 @@ namespace EyeStep
 						{
 							edx_set = FALSE;
 						}
-					// Check if it pushes ECX or pushes EDX
-					} else if (opcode.find("push ") != std::string::npos)
+						// Check if it pushes ECX or pushes EDX
+					}
+					else if (opcode.find("push ") != std::string::npos)
 					{
 						if (src.reg[0] == R32_ECX)
 						{
@@ -1257,7 +1299,7 @@ namespace EyeStep
 			strcat(psuedocode, "int ");
 			return_bits = sizeof(uint32_t);
 		}
-		
+
 		char c_addr[16];
 		sprintf(c_addr, "%08X", start_address);
 
@@ -1314,7 +1356,7 @@ namespace EyeStep
 			size_t length = stream.tellg();
 			stream.seekg(0, std::ios::beg);
 
-			char* buffer = new char[length];     
+			char* buffer = new char[length];
 			stream.read(buffer, length);
 			output += buffer;
 
@@ -1368,170 +1410,173 @@ namespace EyeStep
 		// 
 		scan_results scan(const char* aob, bool code, int align, int endresult, std::vector<scan_check>checks)
 		{
-            auto results = std::vector<uint32_t>();
-
-            MEMORY_BASIC_INFORMATION mbi = { 0 };
+			auto results = std::vector<uint32_t>();
 
 			size_t scan_size = 0;
-            DWORD bytes_read;
+			DWORD bytes_read;
 			uint8_t* bytes = nullptr;
 			uint32_t region_base = 0;
-            uint32_t protection = 0;
-            uint32_t start = 0;
-            uint32_t end = 0;
+			uint32_t protection = 0;
+			uint32_t start = 0;
+			uint32_t end = 0;
 
-            uint8_t* pattern = new uint8_t[128];
-            ZeroMemory(pattern, 128);
+			uint8_t* pattern = new uint8_t[128];
+			ZeroMemory(pattern, 128);
 
-            char* mask = new char[128];
-            ZeroMemory(mask, 128);
+			char* mask = new char[128];
+			ZeroMemory(mask, 128);
 
-            // reinterprets the AOB string as a string mask
-            for (int i = 0, j = 0; i < lstrlenA(aob); i++)
-            {
-                if (aob[i] == 0x20)
-                {
-                    continue;
-                }
-
-                char x[2];
-                x[0] = aob[i];
-                x[1] = aob[1 + i++];
-
-                if (x[0] == '?' && x[1] == '?')
-                {
-                    pattern[j] = 0;
-                    mask[j++] = '?';
-                }
-                else
-                {
-                    // convert 2 chars to byte
-                    int id = 0;
-                    int n = 0;
-
-                    convert:        if (x[id] > 0x60) n = x[id] - 0x57; // n = A-F (10-16)
-                    else if (x[id] > 0x40) n = x[id] - 0x37; // n = a-f (10-16)
-                    else if (x[id] >= 0x30) n = x[id] - 0x30; // number chars
-
-                    if (id != 0)
-                        pattern[j] += n;
-                    else
-                    {
-                        id++, pattern[j] += (n * 16);
-                        goto convert;
-                    }
-
-                    mask[j++] = '.';
-                }
-            }
-
-            if (!code)
-            {
-                SYSTEM_INFO siSysInfo;
-                GetSystemInfo(&siSysInfo);
-
-                // Restrict the scan to virtual memory
-                start = reinterpret_cast<uint32_t>(base_module) + base_module_size;
-				end = reinterpret_cast<uint32_t>(siSysInfo.lpMaximumApplicationAddress);
-            }
-            else
-            {
-                start = reinterpret_cast<uint32_t>(base_module);
-				end = reinterpret_cast<uint32_t>(base_module) + base_module_size;
-            }
-
-            while (start < end)
-            {
-                if (!external_mode)
-                {
-                    VirtualQuery(reinterpret_cast<void*>(start), &mbi, sizeof(mbi)); 
-                }
-                else {
-                    VirtualQueryEx(current_proc, reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
-                }
-
-                // Make sure the memory is committed, matches our protection, and isn't PAGE_GUARD.
-                if ((mbi.State & MEM_COMMIT) && mbi.Protect != PAGE_NOACCESS && mbi.Protect != PAGE_NOCACHE && !(mbi.Protect & PAGE_GUARD))
-                {
-					bool read_memory = true;
-
-					bytes = new uint8_t[mbi.RegionSize];
-
-					if (!external_mode)
-					{
-						memcpy(bytes, reinterpret_cast<void*>(start), mbi.RegionSize);
-					}
-					else {
-						if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(start), bytes, mbi.RegionSize, &bytes_read) == 0)
-						{
-							start += mbi.RegionSize;
-							continue;
-						}
-					}
-
-                    // Scan all the memory in the region.
-                    for (size_t i = 0; i < mbi.RegionSize; i += align)
-                    {
-                        if (compare_bytes(bytes + i, pattern, mask))
-                        {
-							uint32_t at = start + i;
-
-                            if (checks.size() == 0)
-                                results.push_back(at);
-                            else
-                            {
-                                // Go through a series of extra checks,
-                                // make sure all are passed before it's a valid result
-                                size_t checks_pass = 0;
-
-                                for (scan_check check : checks)
-                                {
-                                    switch (check.type)
-                                    {
-                                    case byte_equal:
-                                        if (*reinterpret_cast<uint8_t*>(at + check.offset) == reinterpret_cast<uint8_t>(check.value)) checks_pass++;
-                                        break;
-                                    case word_equal:
-                                        if (*reinterpret_cast<uint16_t*>(at + check.offset) == reinterpret_cast<uint16_t>(check.value)) checks_pass++;
-                                        break;
-                                    case int_equal:
-                                        if (*reinterpret_cast<uint32_t*>(at + check.offset) == reinterpret_cast<uint32_t>(check.value)) checks_pass++;
-                                        break;
-                                    case byte_notequal:
-                                        if (*reinterpret_cast<uint8_t*>(at + check.offset) != reinterpret_cast<uint8_t>(check.value)) checks_pass++;
-                                        break;
-                                    case word_notequal:
-                                        if (*reinterpret_cast<uint16_t*>(at + check.offset) != reinterpret_cast<uint16_t>(check.value)) checks_pass++;
-                                        break;
-                                    case int_notequal:
-                                        if (*reinterpret_cast<uint32_t*>(at + check.offset) != reinterpret_cast<uint32_t>(check.value)) checks_pass++;
-                                        break;
-                                    }
-                                }
-
-                                if (checks_pass == checks.size())
-                                {
-                                    results.push_back(at);
-                                }
-                            }
-                            if (endresult > 0 && results.size() >= endresult)
-                            {
-                                break;
-                            }
-                        }
-                    }
-
-					delete[] bytes;
+			// reinterprets the AOB string as a string mask
+			for (int i = 0, j = 0; i < lstrlenA(aob); i++)
+			{
+				if (aob[i] == 0x20)
+				{
+					continue;
 				}
 
-				// Move onto the next region of memory.
-				start += mbi.RegionSize;
-            }
+				char x[2];
+				x[0] = aob[i];
+				x[1] = aob[1 + i++];
 
-            delete[] mask;
-            delete[] pattern;
+				if (x[0] == '?' && x[1] == '?')
+				{
+					pattern[j] = 0;
+					mask[j++] = '?';
+				}
+				else
+				{
+					// convert 2 chars to byte
+					int id = 0;
+					int n = 0;
 
-            return results;
+				convert:        if (x[id] > 0x60) n = x[id] - 0x57; // n = A-F (10-16)
+				else if (x[id] > 0x40) n = x[id] - 0x37; // n = a-f (10-16)
+				else if (x[id] >= 0x30) n = x[id] - 0x30; // number chars
+
+				if (id != 0)
+					pattern[j] += n;
+				else
+				{
+					id++, pattern[j] += (n * 16);
+					goto convert;
+				}
+
+				mask[j++] = '.';
+				}
+			}
+
+			if (!code)
+			{
+				SYSTEM_INFO siSysInfo;
+				GetSystemInfo(&siSysInfo);
+
+				// Restrict the scan to virtual memory
+				start = reinterpret_cast<uint32_t>(base_module) + base_module_size;
+				end = reinterpret_cast<uint32_t>(siSysInfo.lpMaximumApplicationAddress);
+			}
+			else
+			{
+				start = reinterpret_cast<uint32_t>(base_module);
+				end = reinterpret_cast<uint32_t>(base_module) + base_module_size;
+			}
+
+			printf("Scanning\n");
+
+			while (start < end)
+			{
+				MEMORY_BASIC_INFORMATION mbi = { 0 };
+
+				if (!external_mode)
+				{
+					VirtualQuery(reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
+				}
+				else {
+					VirtualQueryEx(current_proc, reinterpret_cast<void*>(start), &mbi, sizeof(mbi));
+				}
+
+				if (mbi.BaseAddress)
+				{
+					// Make sure the memory is committed, matches our protection, and isn't PAGE_GUARD.
+					if ((mbi.State & MEM_COMMIT) && !(mbi.Protect & PAGE_NOACCESS) && !(mbi.Protect & PAGE_NOCACHE) && !(mbi.Protect & PAGE_GUARD))
+					{
+						bytes = new uint8_t[mbi.RegionSize];
+
+						if (!external_mode)
+						{
+							memcpy(bytes, reinterpret_cast<void*>(start), mbi.RegionSize);
+						}
+						else {
+							if (ReadProcessMemory(current_proc, reinterpret_cast<void*>(start), bytes, mbi.RegionSize, &bytes_read) == 0)
+							{
+								start += mbi.RegionSize;
+								continue;
+							}
+						}
+
+						// Scan all the memory in the region.
+						for (size_t i = 0; i < mbi.RegionSize; i += align)
+						{
+							if (compare_bytes(bytes + i, pattern, mask))
+							{
+								uint32_t result = start + i;
+
+								if (checks.size() == 0)
+									results.push_back(result);
+								else
+								{
+									// Go through a series of extra checks,
+									// make sure all are passed before it's a valid result
+									size_t checks_pass = 0;
+
+									for (scan_check check : checks)
+									{
+										switch (check.type)
+										{
+										case byte_equal:
+											if (*reinterpret_cast<uint8_t*>(bytes + i + check.offset) == reinterpret_cast<uint8_t>(check.value)) checks_pass++;
+											break;
+										case word_equal:
+											if (*reinterpret_cast<uint16_t*>(bytes + i + check.offset) == reinterpret_cast<uint16_t>(check.value)) checks_pass++;
+											break;
+										case int_equal:
+											if (*reinterpret_cast<uint32_t*>(bytes + i + check.offset) == reinterpret_cast<uint32_t>(check.value)) checks_pass++;
+											break;
+										case byte_notequal:
+											if (*reinterpret_cast<uint8_t*>(bytes + i + check.offset) != reinterpret_cast<uint8_t>(check.value)) checks_pass++;
+											break;
+										case word_notequal:
+											if (*reinterpret_cast<uint16_t*>(bytes + i + check.offset) != reinterpret_cast<uint16_t>(check.value)) checks_pass++;
+											break;
+										case int_notequal:
+											if (*reinterpret_cast<uint32_t*>(bytes + i + check.offset) != reinterpret_cast<uint32_t>(check.value)) checks_pass++;
+											break;
+										}
+									}
+
+									if (checks_pass == checks.size())
+									{
+										results.push_back(result);
+									}
+								}
+								if (endresult > 0 && results.size() >= endresult)
+								{
+									break;
+								}
+							}
+						}
+
+						delete[] bytes;
+					}
+
+					// Move onto the next region of memory.
+					start += mbi.RegionSize;
+				}
+			}
+
+			delete[] mask;
+			delete[] pattern;
+
+			return results;
 		}
 
 		// converts a string like "Test" to an AOB string "54 65 73 74"
