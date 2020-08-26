@@ -882,6 +882,7 @@ namespace EyeStep
 		{ "C5", "lds", { DS, r16_32, m16_32_and_16_32 },"Load Far Pointer" },
 		{ "C6", "mov", { r_m8, imm8 },					"Move" },
 		{ "C7", "mov", { r_m16_32, imm16_32 },			"Move" },
+		{ "66+C7", "mov", { r_m16_32, imm16 },			"Move" },
 		{ "C8", "enter", { EBP, imm16, imm8 },			"Make Stack Frame for Procedure Parameters" },
 		{ "C9", "leave", { EBP },						"High Level Procedure Exit" },
 		{ "CA", "retf", { imm16 },						"Return from procedure" },
@@ -1270,10 +1271,10 @@ namespace EyeStep
 			at++, p.flags |= PRE_SEG_GS;
 			break;
 		case OP_66:
-			at++, p.flags |= PRE_66;
+			p.flags |= PRE_66;
 			break;
 		case OP_67:
-			at++, p.flags |= PRE_67;
+			p.flags |= PRE_67;
 			break;
 		case OP_LOCK:
 			at++, p.flags |= PRE_LOCK;
@@ -1814,10 +1815,13 @@ namespace EyeStep
 								get_sib(0); // Translate SIB byte (no offsets)
 								break;
 							case 5:
+								/*
 								char s_disp[16];
 								sprintf(s_disp, "%08X", p.operands[c].disp32 = *reinterpret_cast<uint32_t*>(at + 1));
 								strcat(p.data, s_disp);
 								at += sizeof(uint32_t);
+								*/
+								get_imm32(at, true);
 								break;
 							default:
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
