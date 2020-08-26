@@ -1050,7 +1050,6 @@ namespace EyeStep
 		start_address = func;
 		function_size = func_end - func;
 
-
 		// Identify compiled "strlen" in memory...
 		// we can identify when the compiler generates this
 		// simply by AOB-scan or checking the bytes.
@@ -1110,7 +1109,7 @@ namespace EyeStep
 			}
 
 			// does the source operand use a register?
-			if (src.flags & OP_R32)
+			if (src.flags & OP_R32 || src.flags & OP_R16  || src.flags & OP_R8)
 			{
 				// mov [ebp+08], ???
 				// mov [ebp+0C], ???
@@ -1132,7 +1131,7 @@ namespace EyeStep
 				}
 
 				// does the destination operand use a register?
-				if (dest.flags & OP_R32)
+				if (dest.flags & OP_R32 || dest.flags & OP_R16 || dest.flags & OP_R8)
 				{
 					// mov ???, [ebp+08]
 					// mov ???, [ebp+0C]
@@ -1155,7 +1154,7 @@ namespace EyeStep
 
 					// instruction does not use ecx or edx in both operands.
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
-						&& !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
+					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
 						) {
 						// Figure out what the very last thing is
 						// that gets placed into EAX ( the return value )
