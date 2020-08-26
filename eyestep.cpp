@@ -8,7 +8,7 @@
 
 namespace mnemonics
 {
-	const char* r8_names[] = 
+	const char* r8_names[] =
 	{
 		"al",
 		"cl",
@@ -20,7 +20,7 @@ namespace mnemonics
 		"bh"
 	};
 
-	const char* r16_names[] = 
+	const char* r16_names[] =
 	{
 		"ax",
 		"cx",
@@ -32,7 +32,7 @@ namespace mnemonics
 		"di"
 	};
 
-	const char* r32_names[] = 
+	const char* r32_names[] =
 	{
 		"eax",
 		"ecx",
@@ -44,7 +44,7 @@ namespace mnemonics
 		"edi"
 	};
 
-	const char* r64_names[] = 
+	const char* r64_names[] =
 	{
 		"rax",
 		"rcx",
@@ -56,7 +56,7 @@ namespace mnemonics
 		"rdi"
 	};
 
-	const char* xmm_names[] = 
+	const char* xmm_names[] =
 	{
 		"xmm0",
 		"xmm1",
@@ -80,7 +80,7 @@ namespace mnemonics
 		"mm7"
 	};
 
-	const char* sreg_names[] = 
+	const char* sreg_names[] =
 	{
 		"es",
 		"cs",
@@ -129,20 +129,20 @@ namespace mnemonics
 	};
 }
 
-const uint8_t multipliers[] = 
+const uint8_t multipliers[] =
 {
-	0, 
-	2, 
-	4, 
-	8 
+	0,
+	2,
+	4,
+	8
 };
 
-uint32_t getm20(uint8_t byte) 
+uint32_t getm20(uint8_t byte)
 {
 	return byte % 32;
 }
 
-uint32_t getm40(uint8_t byte) 
+uint32_t getm40(uint8_t byte)
 {
 	return byte % 64;
 }
@@ -294,7 +294,7 @@ namespace EyeStep
 		{ "0F+33", "rdpmc", {  },						"Read Performance-Monitoring Counters" },
 		{ "0F+34", "sysenter", {  },					"Fast System Call" },
 		{ "0F+35", "sysexit", {  },						"Fast Return from Fast System Call" },
-		{ "0F+37", "getsec", {  },						"GETSEC Leaf Functions" }, 
+		{ "0F+37", "getsec", {  },						"GETSEC Leaf Functions" },
 		{ "0F+38+00", "pshufb", { mm, mm_m64 },			"Packed Shuffle Bytes" },
 		{ "66+0F+38+00", "pshufb", { xmm, xmm_m128 },	"Packed Shuffle Bytes" },
 		{ "0F+38+01", "phaddw", { mm, mm_m64 },			"Packed Horizontal Add" },
@@ -1142,7 +1142,7 @@ namespace EyeStep
 		// module's size (needed for certain operations)
 		if (handle == GetCurrentProcess())
 		{
-			base_module = reinterpret_cast<HMODULE>(__readfsdword(0x30) + 8);
+			base_module = *reinterpret_cast<HMODULE*>(__readfsdword(0x30) + 8);
 
 			MEMORY_BASIC_INFORMATION mbi = { 0 };
 			VirtualQuery(reinterpret_cast<void*>(base_module + 4096), &mbi, sizeof(mbi));
@@ -1240,7 +1240,7 @@ namespace EyeStep
 		{
 			memcpy(&p.bytes, reinterpret_cast<void*>(address), sizeof(p.bytes) / sizeof(uint8_t));
 		}
-		else 
+		else
 		{
 			DWORD nothing;
 			ReadProcessMemory(current_proc, reinterpret_cast<void*>(address), &p.bytes, sizeof(p.bytes) / sizeof(uint8_t), &nothing);
@@ -1340,7 +1340,7 @@ namespace EyeStep
 							}
 							break;
 						}
-						else if (opcode_match) 
+						else if (opcode_match)
 						{
 							// in all other cases, it's an extending byte
 							at++;
@@ -1354,7 +1354,7 @@ namespace EyeStep
 					break;
 				}
 			}
-			
+
 			// this byte matches the opcode byte
 			if (opcode_match)
 			{
@@ -1472,7 +1472,8 @@ namespace EyeStep
 							else {
 								sprintf(s_offset, "+%08X", p.operands[c].imm32);
 							}
-						} else 
+						}
+						else
 						{
 							p.operands[c].disp32 = *reinterpret_cast<uint32_t*>(x);
 							p.operands[c].flags |= OP_DISP32;
@@ -1504,14 +1505,16 @@ namespace EyeStep
 							// 
 							strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
 							p.operands[c].flags |= OP_R32;
-						} else 
+						}
+						else
 						{
 							// we need to check the previous byte in this circumstance
 							if (r2 == 5 && *(at - 1) < 64)
 							{
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r1)]);
 								p.operands[c].flags |= OP_R32;
-							} else 
+							}
+							else
 							{
 								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r2)]);
 								strcat(p.data, "+"); // + SIB Base
@@ -1530,10 +1533,11 @@ namespace EyeStep
 							}
 						}
 
-						if (imm == sizeof(uint8_t)) 
+						if (imm == sizeof(uint8_t))
 						{
 							get_imm8(at + 1, false);
-						} else if (imm == sizeof(uint32_t) || (imm == 0 && r2 == 5))
+						}
+						else if (imm == sizeof(uint32_t) || (imm == 0 && r2 == 5))
 						{
 							get_imm32(at + 1, false);
 						}
@@ -1605,289 +1609,289 @@ namespace EyeStep
 
 					switch (p.operands[c].opmode)
 					{
-						case OP_TYPES::one:
-							p.operands[c].disp32 = p.operands[c].disp16 = p.operands[c].disp8 = 1;
-							strcat(p.data, "1");
-							break;
-						case OP_TYPES::xmm0:
-							p.operands[c].append_reg(0);
-							strcat(p.data, "xmm0");
-							p.operands[c].flags |= OP_XMM;
-							break;
-						case OP_TYPES::AL:
-							p.operands[c].append_reg(R8_AL);
-							strcat(p.data, "al");
-							p.operands[c].flags |= OP_R8;
-							break;
-						case OP_TYPES::AH:
-							p.operands[c].append_reg(R8_AH);
-							strcat(p.data, "ah");
-							p.operands[c].flags |= OP_R8;
-							break;
-						case OP_TYPES::AX:
-							p.operands[c].append_reg(R16_AX);
-							strcat(p.data, "ax");
-							p.operands[c].flags |= OP_R16;
-							break;
-						case OP_TYPES::CL:
-							p.operands[c].append_reg(R8_CL);
-							strcat(p.data, "cl");
-							p.operands[c].flags |= OP_R8;
-							break;
-						case OP_TYPES::ES:
-							strcat(p.data, "es");
-							break;
-						case OP_TYPES::SS:
-							strcat(p.data, "ss");
-							break;
-						case OP_TYPES::DS:
-							strcat(p.data, "ds");
-							break;
-						case OP_TYPES::GS:
-							strcat(p.data, "gs");
-							break;
-						case OP_TYPES::FS:
-							strcat(p.data, "fs");
-							break;
-						case OP_TYPES::EAX:
-							p.operands[c].append_reg(R32_EAX);
-							strcat(p.data, "eax");
-							p.operands[c].flags |= OP_R32;
-							break;
-						case OP_TYPES::ECX:
-							p.operands[c].append_reg(R32_ECX);
-							strcat(p.data, "ecx");
-							p.operands[c].flags |= OP_R32;
-							break;
-						case OP_TYPES::EBP:
-							p.operands[c].append_reg(R32_EBX);
-							strcat(p.data, "ebp");
-							p.operands[c].flags |= OP_R32;
-							break;
-						case OP_TYPES::DRn:
-							strcat(p.data, mnemonics::dr_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_DR;
-							break;
-						case OP_TYPES::CRn:
-							strcat(p.data, mnemonics::cr_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_CR;
-							break;
-						case OP_TYPES::ST:
-							strcat(p.data, mnemonics::st_names[p.operands[c].append_reg(0)]);
-							p.operands[c].flags |= OP_ST;
-							break;
-						case OP_TYPES::Sreg:
-							strcat(p.data, mnemonics::sreg_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_SREG;
-							break;
-						case OP_TYPES::mm:
-							strcat(p.data, mnemonics::mm_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_MM;
-							break;
-						case OP_TYPES::xmm:
-							strcat(p.data, mnemonics::xmm_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_XMM;
-							break;
-						case OP_TYPES::r8:
-							strcat(p.data, mnemonics::r8_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_R8;
-							break;
-						case OP_TYPES::r16:
-							strcat(p.data, mnemonics::r16_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_R16;
-							break;
-						case OP_TYPES::r16_32: 
-						case OP_TYPES::r32:
-							strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_R32;
-							break;
-						case OP_TYPES::r64:
-							strcat(p.data, mnemonics::r64_names[p.operands[c].append_reg(r)]);
-							p.operands[c].flags |= OP_R64;
-							break;
-						case OP_TYPES::m8: 
-						case OP_TYPES::m16: 
-						case OP_TYPES::m16_32: 
-						case OP_TYPES::m32:
-						case OP_TYPES::m64real:
-						case OP_TYPES::r_m8: 
-						case OP_TYPES::r_m16: 
-						case OP_TYPES::r_m16_32: 
-						case OP_TYPES::r_m32: 
-						case OP_TYPES::m16_32_and_16_32:
-						case OP_TYPES::m128:
-						case OP_TYPES::mm_m64:
-						case OP_TYPES::xmm_m32: 
-						case OP_TYPES::xmm_m64: 
-						case OP_TYPES::xmm_m128:
-						case OP_TYPES::STi:
+					case OP_TYPES::one:
+						p.operands[c].disp32 = p.operands[c].disp16 = p.operands[c].disp8 = 1;
+						strcat(p.data, "1");
+						break;
+					case OP_TYPES::xmm0:
+						p.operands[c].append_reg(0);
+						strcat(p.data, "xmm0");
+						p.operands[c].flags |= OP_XMM;
+						break;
+					case OP_TYPES::AL:
+						p.operands[c].append_reg(R8_AL);
+						strcat(p.data, "al");
+						p.operands[c].flags |= OP_R8;
+						break;
+					case OP_TYPES::AH:
+						p.operands[c].append_reg(R8_AH);
+						strcat(p.data, "ah");
+						p.operands[c].flags |= OP_R8;
+						break;
+					case OP_TYPES::AX:
+						p.operands[c].append_reg(R16_AX);
+						strcat(p.data, "ax");
+						p.operands[c].flags |= OP_R16;
+						break;
+					case OP_TYPES::CL:
+						p.operands[c].append_reg(R8_CL);
+						strcat(p.data, "cl");
+						p.operands[c].flags |= OP_R8;
+						break;
+					case OP_TYPES::ES:
+						strcat(p.data, "es");
+						break;
+					case OP_TYPES::SS:
+						strcat(p.data, "ss");
+						break;
+					case OP_TYPES::DS:
+						strcat(p.data, "ds");
+						break;
+					case OP_TYPES::GS:
+						strcat(p.data, "gs");
+						break;
+					case OP_TYPES::FS:
+						strcat(p.data, "fs");
+						break;
+					case OP_TYPES::EAX:
+						p.operands[c].append_reg(R32_EAX);
+						strcat(p.data, "eax");
+						p.operands[c].flags |= OP_R32;
+						break;
+					case OP_TYPES::ECX:
+						p.operands[c].append_reg(R32_ECX);
+						strcat(p.data, "ecx");
+						p.operands[c].flags |= OP_R32;
+						break;
+					case OP_TYPES::EBP:
+						p.operands[c].append_reg(R32_EBX);
+						strcat(p.data, "ebp");
+						p.operands[c].flags |= OP_R32;
+						break;
+					case OP_TYPES::DRn:
+						strcat(p.data, mnemonics::dr_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_DR;
+						break;
+					case OP_TYPES::CRn:
+						strcat(p.data, mnemonics::cr_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_CR;
+						break;
+					case OP_TYPES::ST:
+						strcat(p.data, mnemonics::st_names[p.operands[c].append_reg(0)]);
+						p.operands[c].flags |= OP_ST;
+						break;
+					case OP_TYPES::Sreg:
+						strcat(p.data, mnemonics::sreg_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_SREG;
+						break;
+					case OP_TYPES::mm:
+						strcat(p.data, mnemonics::mm_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_MM;
+						break;
+					case OP_TYPES::xmm:
+						strcat(p.data, mnemonics::xmm_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_XMM;
+						break;
+					case OP_TYPES::r8:
+						strcat(p.data, mnemonics::r8_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_R8;
+						break;
+					case OP_TYPES::r16:
+						strcat(p.data, mnemonics::r16_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_R16;
+						break;
+					case OP_TYPES::r16_32:
+					case OP_TYPES::r32:
+						strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_R32;
+						break;
+					case OP_TYPES::r64:
+						strcat(p.data, mnemonics::r64_names[p.operands[c].append_reg(r)]);
+						p.operands[c].flags |= OP_R64;
+						break;
+					case OP_TYPES::m8:
+					case OP_TYPES::m16:
+					case OP_TYPES::m16_32:
+					case OP_TYPES::m32:
+					case OP_TYPES::m64real:
+					case OP_TYPES::r_m8:
+					case OP_TYPES::r_m16:
+					case OP_TYPES::r_m16_32:
+					case OP_TYPES::r_m32:
+					case OP_TYPES::m16_32_and_16_32:
+					case OP_TYPES::m128:
+					case OP_TYPES::mm_m64:
+					case OP_TYPES::xmm_m32:
+					case OP_TYPES::xmm_m64:
+					case OP_TYPES::xmm_m128:
+					case OP_TYPES::STi:
+					{
+						// To-do: Apply markers...
+						if (p.flags & PRE_SEG_CS)
 						{
-							// To-do: Apply markers...
-							if (p.flags & PRE_SEG_CS)
-							{
-								strcat(p.data, "cs:");
-							}
-							else if (p.flags & PRE_SEG_DS)
-							{
-								strcat(p.data, "ds:");
-							}
-							else if (p.flags & PRE_SEG_ES)
-							{
-								strcat(p.data, "es:");
-							}
-							else if (p.flags & PRE_SEG_SS)
-							{
-								strcat(p.data, "ss:");
-							}
-							else if (p.flags & PRE_SEG_FS)
-							{
-								strcat(p.data, "fs:");
-							}
-							else if (p.flags & PRE_SEG_GS)
-							{
-								strcat(p.data, "gs:");
-							}
+							strcat(p.data, "cs:");
+						}
+						else if (p.flags & PRE_SEG_DS)
+						{
+							strcat(p.data, "ds:");
+						}
+						else if (p.flags & PRE_SEG_ES)
+						{
+							strcat(p.data, "es:");
+						}
+						else if (p.flags & PRE_SEG_SS)
+						{
+							strcat(p.data, "ss:");
+						}
+						else if (p.flags & PRE_SEG_FS)
+						{
+							strcat(p.data, "fs:");
+						}
+						else if (p.flags & PRE_SEG_GS)
+						{
+							strcat(p.data, "gs:");
+						}
 
-							if (c == 0)
-							{
-								prev = r;
-							}
+						if (c == 0)
+						{
+							prev = r;
+						}
 
-							r = finalreg(*at);
+						r = finalreg(*at);
 
-							switch (*at / 64) // determine mode from `MOD` byte
+						switch (*at / 64) // determine mode from `MOD` byte
+						{
+						case 3:
+							switch (p.operands[c].opmode)
 							{
-							case 3:
-								switch(p.operands[c].opmode)
-								{
-									case OP_TYPES::r_m8:
-									case OP_TYPES::m8:
-										strcat(p.data, mnemonics::r8_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_R8;
-										break;
-									case OP_TYPES::r_m16:
-									case OP_TYPES::m16:
-										strcat(p.data, mnemonics::r16_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_R16;
-										break;
-									case OP_TYPES::mm_m64:
-										strcat(p.data, mnemonics::mm_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_MM;
-										break;
-									case OP_TYPES::xmm_m32:
-									case OP_TYPES::xmm_m64:
-									case OP_TYPES::xmm_m128:
-									case OP_TYPES::m128:
-										strcat(p.data, mnemonics::xmm_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_XMM;
-										break;
-									case OP_TYPES::ST:
-									case OP_TYPES::STi:
-										strcat(p.data, mnemonics::st_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_ST;
-										break;
-									case OP_TYPES::CRn:
-										strcat(p.data, mnemonics::cr_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_CR;
-										break;
-									case OP_TYPES::DRn:
-										strcat(p.data, mnemonics::dr_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_DR;
-										break;
-									default: // Anything else is going to be 32-bit
-										strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
-										p.operands[c].flags |= OP_R32;
-									break;
-								}
+							case OP_TYPES::r_m8:
+							case OP_TYPES::m8:
+								strcat(p.data, mnemonics::r8_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_R8;
 								break;
-							case 0:
-							{
-								strcat(p.data, "[");
-
-								switch (r)
-								{
-								case 4:
-									get_sib(0); // Translate SIB byte (no offsets)
-									break;
-								case 5:
-									char s_disp[16];
-									sprintf(s_disp, "%08X", p.operands[c].disp32 = *reinterpret_cast<uint32_t*>(at + 1));
-									strcat(p.data, s_disp);
-									at += sizeof(uint32_t);
-									break;
-								default:
-									strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
-									p.operands[c].flags |= OP_R32;
-									break;
-								}
-
-								strcat(p.data, "]");
+							case OP_TYPES::r_m16:
+							case OP_TYPES::m16:
+								strcat(p.data, mnemonics::r16_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_R16;
+								break;
+							case OP_TYPES::mm_m64:
+								strcat(p.data, mnemonics::mm_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_MM;
+								break;
+							case OP_TYPES::xmm_m32:
+							case OP_TYPES::xmm_m64:
+							case OP_TYPES::xmm_m128:
+							case OP_TYPES::m128:
+								strcat(p.data, mnemonics::xmm_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_XMM;
+								break;
+							case OP_TYPES::ST:
+							case OP_TYPES::STi:
+								strcat(p.data, mnemonics::st_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_ST;
+								break;
+							case OP_TYPES::CRn:
+								strcat(p.data, mnemonics::cr_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_CR;
+								break;
+							case OP_TYPES::DRn:
+								strcat(p.data, mnemonics::dr_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_DR;
+								break;
+							default: // Anything else is going to be 32-bit
+								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_R32;
 								break;
 							}
-							case 1:
-								strcat(p.data, "[");
+							break;
+						case 0:
+						{
+							strcat(p.data, "[");
 
-								if (r == 4)
-									get_sib(sizeof(uint8_t)); // Translate SIB byte (with BYTE offset)
-								else {
-									strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
-									p.operands[c].flags |= OP_R32;
-									get_imm8(at + 1, false);
-								}
-
-								strcat(p.data, "]");
+							switch (r)
+							{
+							case 4:
+								get_sib(0); // Translate SIB byte (no offsets)
 								break;
-							case 2:
-								strcat(p.data, "[");
-
-								if (r == 4)
-									get_sib(sizeof(uint32_t)); // Translate SIB byte (with DWORD offset)
-								else {
-									strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
-									p.operands[c].flags |= OP_R32;
-									get_imm32(at + 1, false);
-								}
-
-								strcat(p.data, "]");
+							case 5:
+								char s_disp[16];
+								sprintf(s_disp, "%08X", p.operands[c].disp32 = *reinterpret_cast<uint32_t*>(at + 1));
+								strcat(p.data, s_disp);
+								at += sizeof(uint32_t);
+								break;
+							default:
+								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_R32;
 								break;
 							}
-							at++;
+
+							strcat(p.data, "]");
 							break;
 						}
-						case OP_TYPES::imm8:
-							get_imm8(at, true); // changes to a disp32
-							break;
-						case OP_TYPES::imm16:
-							get_imm16(at, true); // changes to a disp32
-							break;
-						case OP_TYPES::imm16_32: 
-						case OP_TYPES::imm32:
-							get_imm32(at, true); // changes to a disp32
-							break;
-						case OP_TYPES::moffs8:
+						case 1:
 							strcat(p.data, "[");
-							get_imm32(at, true); // changes to a disp32
+
+							if (r == 4)
+								get_sib(sizeof(uint8_t)); // Translate SIB byte (with BYTE offset)
+							else {
+								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_R32;
+								get_imm8(at + 1, false);
+							}
+
 							strcat(p.data, "]");
 							break;
-						case OP_TYPES::moffs16_32:
+						case 2:
 							strcat(p.data, "[");
-							get_imm32(at, true); // changes to a disp32
+
+							if (r == 4)
+								get_sib(sizeof(uint32_t)); // Translate SIB byte (with DWORD offset)
+							else {
+								strcat(p.data, mnemonics::r32_names[p.operands[c].append_reg(r)]);
+								p.operands[c].flags |= OP_R32;
+								get_imm32(at + 1, false);
+							}
+
 							strcat(p.data, "]");
 							break;
-						case OP_TYPES::rel8:
-							get_rel8(at);
-							break;
-						case OP_TYPES::rel16:
-							get_rel16(at);
-							break;
-						case OP_TYPES::rel16_32: 
-						case OP_TYPES::rel32:
-							get_rel32(at);
-							break;
-						case OP_TYPES::ptr16_32:
-							get_imm32(at, true);
-							strcat(p.data, ":");
-							get_imm16(at, true);
+						}
+						at++;
+						break;
+					}
+					case OP_TYPES::imm8:
+						get_imm8(at, true); // changes to a disp32
+						break;
+					case OP_TYPES::imm16:
+						get_imm16(at, true); // changes to a disp32
+						break;
+					case OP_TYPES::imm16_32:
+					case OP_TYPES::imm32:
+						get_imm32(at, true); // changes to a disp32
+						break;
+					case OP_TYPES::moffs8:
+						strcat(p.data, "[");
+						get_imm32(at, true); // changes to a disp32
+						strcat(p.data, "]");
+						break;
+					case OP_TYPES::moffs16_32:
+						strcat(p.data, "[");
+						get_imm32(at, true); // changes to a disp32
+						strcat(p.data, "]");
+						break;
+					case OP_TYPES::rel8:
+						get_rel8(at);
+						break;
+					case OP_TYPES::rel16:
+						get_rel16(at);
+						break;
+					case OP_TYPES::rel16_32:
+					case OP_TYPES::rel32:
+						get_rel32(at);
+						break;
+					case OP_TYPES::ptr16_32:
+						get_imm32(at, true);
+						strcat(p.data, ":");
+						get_imm16(at, true);
 						break;
 					}
 
@@ -1897,7 +1901,7 @@ namespace EyeStep
 						strcat(p.data, ",");
 					}
 				}
-				
+
 				break;
 			}
 		}
