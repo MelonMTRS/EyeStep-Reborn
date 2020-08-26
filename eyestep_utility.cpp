@@ -1052,9 +1052,9 @@ namespace EyeStep
 		start_address = func;
 		function_size = func_end - func;
 
-		// Identify compiled "strlen" in memory...
+		// Identify compiler-generated "strlen" function in memory...
 		// we can identify when the compiler generates this
-		// simply by AOB-scan or checking the bytes.
+		// simply by checking for a byte signature.
 		// This is used to identify const char* args.
 		auto inlined_strlen = std::vector<uint32_t>();
 
@@ -1157,7 +1157,7 @@ namespace EyeStep
 					// instruction does not use ecx or edx in both operands.
 					if (!(src.reg[0] == R32_EDX && dest.reg[0] == R32_EDX)
 					 && !(src.reg[0] == R32_ECX && dest.reg[0] == R32_ECX)
-					){
+						) {
 						// Figure out what the very last thing is
 						// that gets placed into EAX ( the return value )
 
@@ -1171,21 +1171,6 @@ namespace EyeStep
 								return_value = dest;
 							}
 						}
-
-						/*if (opcode.find("test ") != std::string::npos
-							&& src.reg[0] == R32_EDX
-							&& dest.reg[0] == R32_EDX
-							&& !edx_set
-							) {
-							convention = c_fastcall;
-						}
-						else if (opcode.find("test ") != std::string::npos
-							&& src.reg[0] == R32_ECX
-							&& dest.reg[0] == R32_ECX
-							&& !ecx_set
-							) {
-							convention = c_thiscall;
-						}*/
 
 						if (src.reg[0] == R32_EDX)
 						{
@@ -1215,6 +1200,22 @@ namespace EyeStep
 						// an instruction was used with `ecx,ecx`
 						// or `edx,edx`.
 						// We may have to do something about this here...
+						/*
+						if (opcode.find("test ") != std::string::npos
+							&& src.reg[0] == R32_EDX
+							&& dest.reg[0] == R32_EDX
+							&& !edx_set
+							) {
+							convention = c_fastcall;
+						}
+						else if (opcode.find("test ") != std::string::npos
+							&& src.reg[0] == R32_ECX
+							&& dest.reg[0] == R32_ECX
+							&& !ecx_set
+							) {
+							convention = c_thiscall;
+						}
+						*/
 					}
 				}
 				else {
@@ -1230,8 +1231,8 @@ namespace EyeStep
 						{
 							edx_set = FALSE;
 						}
-						// Check if it pushes ECX or pushes EDX
 					}
+					// Check if it pushes ECX or pushes EDX
 					else if (opcode.find("push ") != std::string::npos)
 					{
 						if (src.reg[0] == R32_ECX)
